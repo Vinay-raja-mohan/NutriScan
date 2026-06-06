@@ -17,10 +17,10 @@ export const Spacing = {
 export const Radius = {
   xs: 8,
   sm: 12,
-  md: 16,
+  md: 16, // Inner elements
   lg: 20,
   xl: 24,
-  '2xl': 32,
+  '2xl': 32, // Large cards
   full: 9999,
 };
 
@@ -28,7 +28,7 @@ export const Shadow = {
   sm: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 4,
   },
@@ -46,36 +46,18 @@ export const Shadow = {
     shadowRadius: 32,
     elevation: 12,
   },
-  // Neon lime green glow
   primaryGlow: {
-    shadowColor: '#A8E063',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
+    shadowColor: '#0EA5E9',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
     elevation: 10,
   },
-  // Soft green glow for cards
-  cardGlow: {
-    shadowColor: '#A8E063',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  // Orange glow for calories
-  caloriesGlow: {
-    shadowColor: '#FF6B35',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  // Teal glow for protein
   successGlow: {
-    shadowColor: '#4ECDC4',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
   },
 };

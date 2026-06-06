@@ -1,97 +1,76 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  SafeAreaView, StatusBar, Animated,
+  SafeAreaView, StatusBar,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import { useState } from 'react';
 import { useUserStore } from '../../store/userStore';
 import { usePlanStore } from '../../store/planStore';
 import { useWasteStore } from '../../store/wasteStore';
+import { ProgressRing } from '../../components/ui/ProgressRing';
+import { MacroBar } from '../../components/ui/MacroBar';
 import { WaterTracker } from '../../components/WaterTracker';
+import { Card } from '../../components/ui/Card';
 import { Colors } from '../../theme/colors';
 import { FontSizes, FontWeights, FontFamily } from '../../theme/typography';
 import { Spacing, Radius, Shadow } from '../../theme/spacing';
 import { MOCK_DIET_PLAN } from '../../data/mockDietPlan';
-import { getGreeting, getDayKey, calculateTDEE } from '../../utils/helpers';
+import { getGreeting, getDayKey, formatINR, calculateTDEE } from '../../utils/helpers';
 import { MealType, DayKey } from '../../types';
 
 const MEAL_ICONS: Record<MealType, string> = {
-  breakfast: '🌅', lunch: '☀️', dinner: '🌙', snack: '🍎',
-};
-
-const DAYS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const TODAY_IDX = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
-
-// Animated stat card with slide-up entrance
-const StatCard: React.FC<{
-  icon: string; value: string; label: string; progress: number;
-  barColor: string; delay: number;
-}> = ({ icon, value, label, progress, barColor, delay }) => {
-  const slideAnim = useRef(new Animated.Value(30)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const barAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(slideAnim, { toValue: 0, duration: 400, delay, useNativeDriver: true }),
-      Animated.timing(fadeAnim, { toValue: 1, duration: 400, delay, useNativeDriver: true }),
-    ]).start();
-    Animated.timing(barAnim, {
-      toValue: progress,
-      duration: 800,
-      delay: delay + 200,
-      useNativeDriver: false,
-    }).start();
-  }, []);
-
-  return (
-    <Animated.View style={[
-      styles.statCard,
-      { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-      Shadow.sm,
-    ]}>
-      <Text style={styles.statIcon}>{icon}</Text>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-      <View style={styles.statBarTrack}>
-        <Animated.View style={[styles.statBarFill, {
-          backgroundColor: barColor,
-          width: barAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
-        }]} />
-      </View>
-    </Animated.View>
-  );
+  breakfast: '🌅',
+  lunch: '☀️',
+  dinner: '🌙',
+  snack: '🍎',
 };
 
 export const HomeScreen: React.FC = () => {
   const { profile } = useUserStore();
-  const { weeklyPlan, todayWaterGlasses, setWater, loadWater, loadPlan, setPlan, updateMealStatus } = usePlanStore();
+  const { weeklyPlan, todayWaterGlasses, setWater, loadWater, setPlan, loadPlan, updateMealStatus } = usePlanStore();
   const { tracker } = useWasteStore();
-
-  const headerAnim = useRef(new Animated.Value(-20)).current;
-  const headerFade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     loadWater();
     loadPlan();
+    // Seed mock plan if none exists
     if (!weeklyPlan && profile) {
       setPlan(MOCK_DIET_PLAN(profile.id));
     }
-    Animated.parallel([
-      Animated.timing(headerAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
-      Animated.timing(headerFade, { toValue: 1, duration: 500, useNativeDriver: true }),
-    ]).start();
   }, [profile]);
 
   const dayKey: DayKey = getDayKey();
   const todayPlan = weeklyPlan?.days[dayKey];
-  const targetCals = profile ? calculateTDEE(profile) : 2100;
+  const targetCals = profile ? calculateTDEE(profile) : 1800;
   const meals: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
 
   const consumed = todayPlan
-    ? meals.filter(m => todayPlan[m].status === 'logged')
-        .reduce((s, m) => s + todayPlan[m].macros.calories, 0)
+    ? meals.filter(m => todayPlan[m].status === 'logged').reduce((s, m) => s + todayPlan[m].macros.calories, 0)
     : 0;
+  const calorieProgress = Math.min((consumed / targetCals) * 100, 100);
+
+  const [displayCals, setDisplayCals] = useState(0);
+  useEffect(() => {
+    if (consumed === 0) {
+      setDisplayCals(0);
+      return;
+    }
+    let start = 0;
+    const duration = 800;
+    const increment = consumed / (duration / 16);
+    const interval = setInterval(() => {
+      start += increment;
+      if (start >= consumed) {
+        setDisplayCals(consumed);
+        clearInterval(interval);
+      } else {
+        setDisplayCals(Math.floor(start));
+      }
+    }, 16);
+    return () => clearInterval(interval);
+  }, [consumed]);
 
   const totalMacros = todayPlan
     ? meals.reduce((acc, m) => ({
@@ -100,161 +79,141 @@ export const HomeScreen: React.FC = () => {
         carbs: acc.carbs + todayPlan[m].macros.carbs,
         fat: acc.fat + todayPlan[m].macros.fat,
       }), { calories: 0, protein: 0, carbs: 0, fat: 0 })
-    : { calories: 1842, protein: 89, carbs: 210, fat: 52 };
+    : { calories: 0, protein: 0, carbs: 0, fat: 0 };
 
   const toggleMeal = (meal: MealType) => {
     if (!todayPlan) return;
-    const next = todayPlan[meal].status === 'logged' ? 'upcoming' : 'logged';
+    const current = todayPlan[meal].status;
+    const next = current === 'logged' ? 'upcoming' : 'logged';
     updateMealStatus(dayKey, meal, next);
   };
 
+  const quickActions = [
+    { icon: '🔍', label: 'Scan Label' },
+    { icon: '🥦', label: 'Scan Fridge' },
+    { icon: '🤖', label: 'Ask AI' },
+    { icon: '📝', label: 'Edit Plan' },
+  ];
+
   return (
     <>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
+      <StatusBar barStyle="light-content" />
       <SafeAreaView style={styles.safe}>
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scroll}
-        >
-          {/* ── Header ── */}
-          <Animated.View style={[
-            styles.header,
-            { opacity: headerFade, transform: [{ translateY: headerAnim }] },
-          ]}>
-            <View style={styles.headerLeft}>
-              <View style={styles.avatarRing}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>
-                    {profile?.name?.charAt(0)?.toUpperCase() ?? 'V'}
-                  </Text>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+          {/* Hero Header */}
+          <LinearGradient colors={Colors.gradientSoft} style={styles.header}>
+            <BlurView intensity={20} tint="dark" style={styles.headerGlassPill}>
+              <View>
+                <Text style={styles.greeting}>{getGreeting()}, {profile?.name?.split(' ')[0] ?? 'there'}! 🌿</Text>
+                <Text style={styles.headerSub}>AI Health Command Center</Text>
+              </View>
+            </BlurView>
+
+            {/* Macro Rings */}
+            <View style={styles.ringSection}>
+              <View style={styles.ringStack}>
+                <ProgressRing value={calorieProgress} size={200} strokeWidth={16} color={Colors.primary} trackColor="rgba(255,255,255,0.05)" />
+                <View style={{ position: 'absolute' }}>
+                  <ProgressRing value={totalMacros.protein ? Math.min((totalMacros.protein / 150) * 100, 100) : 0} size={150} strokeWidth={12} color={Colors.protein} trackColor="rgba(255,255,255,0.05)" />
+                </View>
+                <View style={{ position: 'absolute' }}>
+                  <ProgressRing value={totalMacros.carbs ? Math.min((totalMacros.carbs / 250) * 100, 100) : 0} size={110} strokeWidth={10} color={Colors.carbs} trackColor="rgba(255,255,255,0.05)" />
+                </View>
+                <View style={{ position: 'absolute' }}>
+                  <ProgressRing value={totalMacros.fat ? Math.min((totalMacros.fat / 70) * 100, 100) : 0} size={76} strokeWidth={8} color={Colors.fat} trackColor="rgba(255,255,255,0.05)" />
+                </View>
+                
+                {/* Center Ticking Number */}
+                <View style={styles.ringCenterText}>
+                  <Text style={styles.ringCals}>{displayCals}</Text>
+                  <Text style={styles.ringTarget}>/ {targetCals} kcal</Text>
                 </View>
               </View>
-              <View style={styles.greetingBlock}>
-                <Text style={styles.greeting}>
-                  {getGreeting()}, {profile?.name?.split(' ')[0] ?? 'there'} 👋
-                </Text>
-                <Text style={styles.greetingSub}>Track your nutrition today</Text>
-              </View>
-            </View>
-            <View style={styles.headerRight}>
-              <TouchableOpacity style={styles.iconBtn}>
-                <Text style={styles.iconBtnText}>🔔</Text>
-                <View style={styles.notifDot} />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.iconBtn}>
-                <Text style={styles.iconBtnText}>🔥</Text>
-                <Text style={styles.streakNum}>5</Text>
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
-
-          {/* ── Week Strip ── */}
-          <View style={styles.weekStrip}>
-            {DAYS_SHORT.map((day, i) => (
-              <View key={day} style={styles.dayCol}>
-                <Text style={styles.dayName}>{day}</Text>
-                <View style={[styles.dayCircle, i === TODAY_IDX && styles.dayCircleActive]}>
-                  <Text style={[styles.dayNum, i === TODAY_IDX && styles.dayNumActive]}>
-                    {new Date(Date.now() - (TODAY_IDX - i) * 86400000).getDate()}
-                  </Text>
+              <View style={styles.macroSection}>
+                <View style={styles.macroItem}>
+                  <Text style={styles.macroValue}>{totalMacros.protein}g</Text>
+                  <Text style={styles.macroLabel}>Protein</Text>
+                </View>
+                <View style={styles.macroDivider} />
+                <View style={styles.macroItem}>
+                  <Text style={styles.macroValue}>{totalMacros.carbs}g</Text>
+                  <Text style={styles.macroLabel}>Carbs</Text>
+                </View>
+                <View style={styles.macroDivider} />
+                <View style={styles.macroItem}>
+                  <Text style={styles.macroValue}>{totalMacros.fat}g</Text>
+                  <Text style={styles.macroLabel}>Fat</Text>
                 </View>
               </View>
-            ))}
-          </View>
-
-          {/* ── Nutrition Stats Row ── */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statsRow} contentContainerStyle={styles.statsContent}>
-            <StatCard icon="🔥" value={`${consumed || totalMacros.calories}`} label="Calories" progress={Math.min((consumed || totalMacros.calories) / targetCals, 1)} barColor={Colors.calories} delay={0} />
-            <StatCard icon="💧" value={`${totalMacros.protein}g`} label="Protein" progress={Math.min(totalMacros.protein / 120, 1)} barColor={Colors.protein} delay={80} />
-            <StatCard icon="🌾" value={`${totalMacros.carbs}g`} label="Carbs" progress={Math.min(totalMacros.carbs / 280, 1)} barColor={Colors.carbs} delay={160} />
-            <StatCard icon="💊" value={`${totalMacros.fat}g`} label="Fat" progress={Math.min(totalMacros.fat / 70, 1)} barColor={Colors.fat} delay={240} />
-          </ScrollView>
-
-          {/* ── Calorie Progress Bar ── */}
-          <View style={styles.section}>
-            <View style={styles.calHeader}>
-              <Text style={styles.sectionTitle}>DAILY GOAL</Text>
-              <Text style={styles.calNumbers}>
-                <Text style={styles.calConsumed}>{consumed || totalMacros.calories} </Text>
-                <Text style={styles.calTarget}>/ {targetCals} kcal</Text>
-              </Text>
             </View>
-            <View style={styles.calTrack}>
-              <View style={[
-                styles.calFill,
-                {
-                  width: `${Math.min(((consumed || totalMacros.calories) / targetCals) * 100, 100)}%`,
-                  ...Shadow.primaryGlow,
-                },
-              ]} />
-            </View>
-          </View>
+          </LinearGradient>
 
-          {/* ── Today's Meals ── */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>TODAY'S MEALS</Text>
-            {todayPlan ? meals.map((meal, idx) => {
-              const slot = todayPlan[meal];
-              const logged = slot.status === 'logged';
-              return (
-                <TouchableOpacity
-                  key={meal}
-                  style={[styles.mealCard, logged && styles.mealCardLogged]}
-                  onPress={() => toggleMeal(meal)}
-                  activeOpacity={0.75}
-                >
-                  <Text style={styles.mealEmoji}>{MEAL_ICONS[meal]}</Text>
-                  <View style={styles.mealInfo}>
-                    <Text style={styles.mealName}>{slot.name}</Text>
-                    <View style={styles.mealMeta}>
-                      <View style={styles.mealBadge}>
-                        <Text style={styles.mealBadgeText}>🔥 {slot.macros.calories} kcal</Text>
+          <View style={styles.body}>
+            {/* Recent Logs (Horizontal Glass Cards) */}
+            <View>
+              <Text style={styles.sectionTitle}>TODAY'S LOGS</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing[4] }}>
+                {todayPlan ? meals.map(meal => {
+                  const slot = todayPlan[meal];
+                  const logged = slot.status === 'logged';
+                  if (!logged) return null; // Only show logged meals in recent logs
+                  
+                  return (
+                    <BlurView key={meal} intensity={20} tint="dark" style={styles.glassLogCard}>
+                      <View style={styles.glassLogHeader}>
+                        <Text style={styles.mealIcon}>{MEAL_ICONS[meal]}</Text>
+                        <View style={styles.scoreShield}>
+                          <Text style={styles.scoreText}>95%</Text>
+                        </View>
                       </View>
-                      <View style={[styles.mealBadge, { backgroundColor: Colors.proteinMuted }]}>
-                        <Text style={[styles.mealBadgeText, { color: Colors.protein }]}>P: {slot.macros.protein}g</Text>
-                      </View>
-                      <View style={[styles.mealBadge, { backgroundColor: Colors.carbsMuted }]}>
-                        <Text style={[styles.mealBadgeText, { color: Colors.carbs }]}>C: {slot.macros.carbs}g</Text>
-                      </View>
-                    </View>
-                  </View>
-                  <View style={[styles.logBtn, logged && styles.logBtnActive]}>
-                    <Text style={[styles.logBtnText, logged && styles.logBtnTextActive]}>
-                      {logged ? '✓' : '○'}
-                    </Text>
-                  </View>
+                      <Text style={styles.glassLogName} numberOfLines={2}>{slot.name}</Text>
+                      <Text style={styles.glassLogCals}>{slot.macros.calories} kcal</Text>
+                    </BlurView>
+                  );
+                }) : null}
+                {/* Add a prompt card if nothing is logged */}
+                {(!todayPlan || !meals.some(m => todayPlan[m].status === 'logged')) && (
+                  <BlurView intensity={20} tint="dark" style={[styles.glassLogCard, { justifyContent: 'center', alignItems: 'center' }]}>
+                     <Text style={{ fontSize: 24 }}>📷</Text>
+                     <Text style={[styles.glassLogName, { textAlign: 'center', marginTop: Spacing[2] }]}>Nothing logged yet</Text>
+                     <Text style={[styles.glassLogCals, { textAlign: 'center' }]}>Scan food to start</Text>
+                  </BlurView>
+                )}
+              </ScrollView>
+            </View>
+
+            {/* Waste Saved */}
+            <Card style={[styles.card, styles.wasteCard]}>
+              <View style={styles.wasteRow}>
+                <Text style={styles.wasteEmoji}>♻️</Text>
+                <View style={styles.wasteInfo}>
+                  <Text style={styles.wasteTitle}>WASTE SAVED THIS WEEK</Text>
+                  <Text style={styles.wasteValue}>{tracker?.mealsFromPantry ?? 3} meals from leftovers</Text>
+                  <Text style={styles.wasteMoney}>Est. {formatINR(tracker?.moneySavedINR ?? 240)} saved</Text>
+                </View>
+                <Text style={styles.co2Text}>🌍{"\n"}{(tracker?.co2AvoidedKg ?? 0.8).toFixed(1)}kg CO₂</Text>
+              </View>
+            </Card>
+
+            {/* Quick Actions */}
+            <Text style={styles.sectionTitle}>QUICK ACTIONS</Text>
+            <View style={styles.quickGrid}>
+              {quickActions.map((a, i) => (
+                <TouchableOpacity key={i} style={styles.quickBtn} activeOpacity={0.8}>
+                  <Text style={styles.quickIcon}>{a.icon}</Text>
+                  <Text style={styles.quickLabel}>{a.label}</Text>
                 </TouchableOpacity>
-              );
-            }) : (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyEmoji}>🤖</Text>
-                <Text style={styles.emptyTitle}>No plan yet</Text>
-                <Text style={styles.emptySubtitle}>Go to Planner to generate your AI meal plan</Text>
-              </View>
-            )}
-          </View>
-
-          {/* ── Water Tracker ── */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>HYDRATION</Text>
-            <View style={styles.card}>
-              <WaterTracker glasses={todayWaterGlasses} onGlassPress={setWater} />
+              ))}
             </View>
-          </View>
 
-          {/* ── Waste Saved ── */}
-          <View style={[styles.card, styles.wasteCard]}>
-            <View style={styles.wasteRow}>
-              <Text style={styles.wasteEmoji}>♻️</Text>
-              <View style={styles.wasteInfo}>
-                <Text style={styles.wasteTitle}>WASTE SAVED THIS WEEK</Text>
-                <Text style={styles.wasteValue}>{tracker?.mealsFromPantry ?? 3} meals from leftovers</Text>
-                <Text style={styles.wasteStat}>🌍 {(tracker?.co2AvoidedKg ?? 0.8).toFixed(1)}kg CO₂ avoided</Text>
-              </View>
-            </View>
+            {/* Water Tracker */}
+            <Card style={styles.card}>
+              <WaterTracker
+                glasses={todayWaterGlasses}
+                onGlassPress={setWater}
+              />
+            </Card>
           </View>
-
-          <View style={{ height: Spacing[8] }} />
         </ScrollView>
       </SafeAreaView>
     </>
@@ -263,90 +222,42 @@ export const HomeScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
-  scroll: { paddingBottom: 16 },
-
-  // Header
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing[4], paddingTop: Spacing[4], paddingBottom: Spacing[3] },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3] },
-  avatarRing: { width: 46, height: 46, borderRadius: 23, borderWidth: 2.5, borderColor: Colors.primary, alignItems: 'center', justifyContent: 'center', ...Shadow.primaryGlow },
-  avatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.surface, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontFamily: FontFamily.display, fontSize: FontSizes.lg, fontWeight: FontWeights.bold, color: Colors.primary },
-  greetingBlock: { gap: 2 },
-  greeting: { fontFamily: FontFamily.display, fontSize: FontSizes.lg, fontWeight: FontWeights.bold, color: Colors.textPrimary },
-  greetingSub: { fontFamily: FontFamily.body, fontSize: FontSizes.xs, color: Colors.textSecondary },
-  headerRight: { flexDirection: 'row', gap: Spacing[2] },
-  iconBtn: { position: 'relative', width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.surface, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.border },
-  iconBtnText: { fontSize: 16 },
-  notifDot: { position: 'absolute', top: 6, right: 6, width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.danger, borderWidth: 1.5, borderColor: Colors.background },
-  streakNum: { position: 'absolute', bottom: 4, right: 4, fontFamily: FontFamily.display, fontSize: 8, fontWeight: FontWeights.bold, color: Colors.primary },
-
-  // Week Strip
-  weekStrip: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: Spacing[4], paddingVertical: Spacing[3] },
-  dayCol: { alignItems: 'center', gap: 6 },
-  dayName: { fontFamily: FontFamily.body, fontSize: 10, color: Colors.textMuted, fontWeight: FontWeights.medium },
-  dayCircle: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent' },
-  dayCircleActive: { backgroundColor: Colors.primary, ...Shadow.primaryGlow },
-  dayNum: { fontFamily: FontFamily.display, fontSize: FontSizes.sm, fontWeight: FontWeights.semibold, color: Colors.textSecondary },
-  dayNumActive: { color: Colors.textInverse, fontWeight: FontWeights.bold },
-
-  // Stats Row
-  statsRow: { marginBottom: Spacing[2] },
-  statsContent: { paddingHorizontal: Spacing[4], gap: Spacing[3], paddingVertical: Spacing[1] },
-  statCard: {
-    width: 96, backgroundColor: Colors.surface, borderRadius: Radius.xl,
-    padding: Spacing[3], alignItems: 'center', gap: Spacing[1],
-    borderWidth: 1, borderColor: Colors.border,
-  },
-  statIcon: { fontSize: 22 },
-  statValue: { fontFamily: FontFamily.display, fontSize: FontSizes.xl, fontWeight: FontWeights.extrabold, color: Colors.textPrimary },
-  statLabel: { fontFamily: FontFamily.body, fontSize: FontSizes.xs, color: Colors.textSecondary },
-  statBarTrack: { width: '100%', height: 4, backgroundColor: Colors.divider, borderRadius: Radius.full, overflow: 'hidden', marginTop: Spacing[1] },
-  statBarFill: { height: '100%', borderRadius: Radius.full },
-
-  // Sections
-  section: { paddingHorizontal: Spacing[4], marginBottom: Spacing[4] },
-  sectionTitle: { fontFamily: FontFamily.body, fontSize: FontSizes.xs, fontWeight: FontWeights.bold, color: Colors.textSecondary, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: Spacing[3] },
-
-  // Calorie bar
-  calHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing[2] },
-  calNumbers: { fontFamily: FontFamily.display },
-  calConsumed: { fontSize: FontSizes.lg, fontWeight: FontWeights.bold, color: Colors.primary },
-  calTarget: { fontSize: FontSizes.sm, color: Colors.textSecondary },
-  calTrack: { height: 10, backgroundColor: Colors.surface, borderRadius: Radius.full, overflow: 'hidden', borderWidth: 1, borderColor: Colors.border },
-  calFill: { height: '100%', backgroundColor: Colors.primary, borderRadius: Radius.full },
-
-  // Meal cards
-  card: { backgroundColor: Colors.surface, borderRadius: Radius.xl, padding: Spacing[4], borderWidth: 1, borderColor: Colors.border },
-  mealCard: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing[3],
-    backgroundColor: Colors.surface, borderRadius: Radius.xl,
-    padding: Spacing[4], marginBottom: Spacing[3],
-    borderWidth: 1, borderColor: Colors.border,
-    ...Shadow.sm,
-  },
-  mealCardLogged: { borderColor: Colors.borderActive, backgroundColor: 'rgba(168, 224, 99, 0.06)' },
-  mealEmoji: { fontSize: 32, width: 44, textAlign: 'center' },
-  mealInfo: { flex: 1, gap: Spacing[2] },
-  mealName: { fontFamily: FontFamily.display, fontSize: FontSizes.base, fontWeight: FontWeights.bold, color: Colors.textPrimary },
-  mealMeta: { flexDirection: 'row', gap: Spacing[1], flexWrap: 'wrap' },
-  mealBadge: { backgroundColor: Colors.caloriesMuted, borderRadius: Radius.full, paddingHorizontal: Spacing[2], paddingVertical: 3 },
-  mealBadgeText: { fontFamily: FontFamily.body, fontSize: 10, fontWeight: FontWeights.semibold, color: Colors.calories },
-  logBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
-  logBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary, ...Shadow.primaryGlow },
-  logBtnText: { fontSize: 16, color: Colors.textMuted },
-  logBtnTextActive: { color: Colors.textInverse, fontWeight: FontWeights.bold },
-
-  emptyCard: { alignItems: 'center', gap: Spacing[2], padding: Spacing[6], backgroundColor: Colors.surface, borderRadius: Radius.xl, borderWidth: 1, borderColor: Colors.border },
-  emptyEmoji: { fontSize: 48 },
-  emptyTitle: { fontFamily: FontFamily.display, fontSize: FontSizes.lg, fontWeight: FontWeights.bold, color: Colors.textPrimary },
-  emptySubtitle: { fontFamily: FontFamily.body, fontSize: FontSizes.sm, color: Colors.textSecondary, textAlign: 'center' },
-
-  // Waste card
-  wasteCard: { marginHorizontal: Spacing[4], backgroundColor: Colors.successLight },
+  scroll: { paddingBottom: 32 },
+  header: { padding: Spacing[5], paddingTop: Spacing[4], paddingBottom: Spacing[8] },
+  headerGlassPill: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing[6], padding: Spacing[4], borderRadius: Radius['2xl'], overflow: 'hidden', borderWidth: 1, borderColor: Colors.border },
+  greeting: { fontFamily: FontFamily.display, fontSize: FontSizes.xl, fontWeight: FontWeights.bold, color: Colors.textPrimary },
+  headerSub: { fontFamily: FontFamily.body, fontSize: FontSizes.sm, color: Colors.textSecondary, marginTop: 2 },
+  ringSection: { alignItems: 'center', gap: Spacing[6] },
+  ringStack: { width: 200, height: 200, alignItems: 'center', justifyContent: 'center' },
+  ringCenterText: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
+  ringCals: { fontFamily: FontFamily.display, fontSize: FontSizes['2xl'], fontWeight: FontWeights.bold, color: Colors.textPrimary },
+  ringTarget: { fontFamily: FontFamily.body, fontSize: FontSizes.xs, color: Colors.textSecondary },
+  macroSection: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: Radius['2xl'], padding: Spacing[4], gap: Spacing[4], borderWidth: 1, borderColor: Colors.border },
+  macroItem: { alignItems: 'center', flex: 1 },
+  macroValue: { fontFamily: FontFamily.display, fontSize: FontSizes.lg, fontWeight: FontWeights.bold, color: Colors.textPrimary },
+  macroLabel: { fontFamily: FontFamily.body, fontSize: FontSizes.xs, color: Colors.textSecondary, marginTop: 2 },
+  macroDivider: { width: 1, backgroundColor: Colors.divider },
+  body: { padding: Spacing[4], marginTop: -Spacing[4], gap: Spacing[3] },
+  card: { borderRadius: Radius.xl },
+  wasteCard: { backgroundColor: Colors.successLight },
+  sectionTitle: { fontSize: FontSizes.xs, fontWeight: FontWeights.semibold, color: Colors.textSecondary, letterSpacing: 1, textTransform: 'uppercase', marginBottom: Spacing[3] },
+  glassLogCard: { width: 140, height: 160, borderRadius: Radius['2xl'], padding: Spacing[4], overflow: 'hidden', borderWidth: 1, borderColor: Colors.border, backgroundColor: 'rgba(24,24,27,0.4)' },
+  glassLogHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing[3] },
+  scoreShield: { backgroundColor: Colors.successLight, paddingHorizontal: 6, paddingVertical: 2, borderRadius: Radius.sm },
+  scoreText: { fontFamily: FontFamily.display, fontSize: 10, fontWeight: FontWeights.bold, color: Colors.success },
+  glassLogName: { fontFamily: FontFamily.body, fontSize: FontSizes.sm, fontWeight: FontWeights.medium, color: Colors.textPrimary, flex: 1 },
+  glassLogCals: { fontFamily: FontFamily.display, fontSize: FontSizes.xs, color: Colors.primaryLight, marginTop: 4, fontWeight: FontWeights.bold },
+  mealIcon: { fontSize: 28 },
+  emptyText: { fontSize: FontSizes.sm, color: Colors.textMuted, textAlign: 'center', paddingVertical: Spacing[4] },
   wasteRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3] },
-  wasteEmoji: { fontSize: 36 },
-  wasteInfo: { flex: 1, gap: 4 },
-  wasteTitle: { fontFamily: FontFamily.body, fontSize: FontSizes.xs, fontWeight: FontWeights.bold, color: Colors.primary, letterSpacing: 1, textTransform: 'uppercase' },
-  wasteValue: { fontFamily: FontFamily.display, fontSize: FontSizes.base, fontWeight: FontWeights.bold, color: Colors.textPrimary },
-  wasteStat: { fontFamily: FontFamily.body, fontSize: FontSizes.xs, color: Colors.textSecondary },
+  wasteEmoji: { fontSize: 32 },
+  wasteInfo: { flex: 1 },
+  wasteTitle: { fontSize: FontSizes.xs, fontWeight: FontWeights.semibold, color: Colors.success, letterSpacing: 0.8, textTransform: 'uppercase' },
+  wasteValue: { fontSize: FontSizes.base, fontWeight: FontWeights.semibold, color: Colors.textPrimary, marginTop: 2 },
+  wasteMoney: { fontSize: FontSizes.sm, color: Colors.success, marginTop: 2 },
+  co2Text: { fontSize: FontSizes.xs, color: Colors.success, textAlign: 'center', fontWeight: FontWeights.semibold },
+  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[3], marginBottom: Spacing[2] },
+  quickBtn: { flex: 1, minWidth: '45%', backgroundColor: Colors.surface, borderRadius: Radius.xl, padding: Spacing[4], alignItems: 'center', gap: Spacing[2], borderWidth: 1, borderColor: Colors.border, ...Shadow.sm },
+  quickIcon: { fontSize: 28 },
+  quickLabel: { fontSize: FontSizes.sm, fontWeight: FontWeights.semibold, color: Colors.textPrimary, textAlign: 'center' },
 });

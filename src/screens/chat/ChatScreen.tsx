@@ -8,7 +8,7 @@ import { useUserStore } from '../../store/userStore';
 import { useChatStore } from '../../store/chatStore';
 import { callGemini } from '../../services/geminiApi';
 import { Colors } from '../../theme/colors';
-import { FontSizes, FontWeights, FontFamily } from '../../theme/typography';
+import { FontSizes, FontWeights } from '../../theme/typography';
 import { Spacing, Radius, Shadow } from '../../theme/spacing';
 import { ChatMessage } from '../../types';
 import { generateId, calculateTDEE } from '../../utils/helpers';
@@ -87,20 +87,17 @@ export const ChatScreen: React.FC = () => {
 
   return (
     <>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
+      <StatusBar barStyle="light-content" />
       <SafeAreaView style={styles.safe}>
-        <View style={styles.header}>
+        <LinearGradient colors={Colors.gradientPrimary} style={styles.header}>
           <View style={styles.headerContent}>
-            <View style={styles.aiAvatarRing}>
-              <Text style={styles.aiAvatar}>🌿</Text>
-            </View>
-            <View style={{ flex: 1 }}>
+            <Text style={styles.aiAvatar}>🌿</Text>
+            <View>
               <Text style={styles.headerTitle}>NutriScan AI</Text>
               <Text style={styles.headerSub}>Your personal nutrition advisor</Text>
             </View>
-            <View style={styles.onlineDot} />
           </View>
-        </View>
+        </LinearGradient>
 
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={0}>
           {/* Messages */}
@@ -177,106 +174,39 @@ export const ChatScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
-
-  // Header
-  header: {
-    backgroundColor: Colors.surface, borderBottomWidth: 1,
-    borderBottomColor: Colors.divider, paddingHorizontal: Spacing[4],
-    paddingVertical: Spacing[4],
-  },
+  header: { padding: Spacing[5], paddingBottom: Spacing[4] },
   headerContent: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3] },
-  aiAvatarRing: {
-    width: 46, height: 46, borderRadius: 23,
-    borderWidth: 2.5, borderColor: Colors.primary,
-    alignItems: 'center', justifyContent: 'center',
-    ...Shadow.primaryGlow,
-  },
-  aiAvatar: { fontSize: 24 },
-  headerTitle: { fontFamily: FontFamily.display, fontSize: FontSizes.lg, fontWeight: FontWeights.bold, color: Colors.textPrimary },
-  headerSub: { fontFamily: FontFamily.body, fontSize: FontSizes.xs, color: Colors.textSecondary },
-  onlineDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.primary, ...Shadow.primaryGlow },
-
-  // Messages
+  aiAvatar: { fontSize: 36, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 24, width: 48, height: 48, textAlign: 'center', textAlignVertical: 'center' },
+  headerTitle: { fontSize: FontSizes.xl, fontWeight: FontWeights.bold, color: '#FFFFFF' },
+  headerSub: { fontSize: FontSizes.sm, color: 'rgba(255,255,255,0.8)' },
   messages: { flex: 1 },
   messagesContent: { padding: Spacing[4], gap: Spacing[3], paddingBottom: Spacing[4] },
-
-  // Empty state
   emptyState: { alignItems: 'center', paddingTop: Spacing[10], gap: Spacing[3] },
-  emptyEmoji: { fontSize: 64 },
-  emptyTitle: { fontFamily: FontFamily.display, fontSize: FontSizes['2xl'], fontWeight: FontWeights.bold, color: Colors.textPrimary },
-  emptyText: { fontFamily: FontFamily.body, fontSize: FontSizes.base, color: Colors.textSecondary, textAlign: 'center', lineHeight: 24 },
-
-  // Chat bubbles
+  emptyEmoji: { fontSize: 56 },
+  emptyTitle: { fontSize: FontSizes['2xl'], fontWeight: FontWeights.bold, color: Colors.textPrimary },
+  emptyText: { fontSize: FontSizes.base, color: Colors.textSecondary, textAlign: 'center', lineHeight: 24 },
   bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing[2] },
   bubbleRowUser: { flexDirection: 'row-reverse' },
-  bubbleAvatar: {
-    fontSize: 18, width: 34, height: 34, textAlign: 'center', textAlignVertical: 'center',
-    backgroundColor: Colors.surface, borderRadius: 17,
-    borderWidth: 1.5, borderColor: Colors.primary, overflow: 'hidden',
-  },
+  bubbleAvatar: { fontSize: 22, width: 32, height: 32, textAlign: 'center', textAlignVertical: 'center' },
   bubble: { maxWidth: '80%', borderRadius: Radius.xl, padding: Spacing[3], gap: Spacing[1] },
-  bubbleAI: {
-    backgroundColor: Colors.surface,
-    borderWidth: 1, borderColor: Colors.border,
-    borderBottomLeftRadius: Radius.xs,
-    ...Shadow.sm,
-  },
-  bubbleUser: {
-    backgroundColor: Colors.primaryMuted,
-    borderWidth: 1.5, borderColor: Colors.primary,
-    borderBottomRightRadius: Radius.xs,
-  },
-  personalizedTag: {
-    backgroundColor: Colors.primaryMuted, borderRadius: Radius.full,
-    paddingHorizontal: Spacing[2], paddingVertical: 2, alignSelf: 'flex-start',
-  },
-  personalizedText: { fontFamily: FontFamily.body, fontSize: FontSizes.xs, color: Colors.primary, fontWeight: FontWeights.semibold },
-  bubbleText: { fontFamily: FontFamily.body, fontSize: FontSizes.base, color: Colors.textPrimary, lineHeight: 22 },
-  bubbleTextUser: { color: Colors.primary },
-  timestamp: { fontFamily: FontFamily.body, fontSize: FontSizes.xs, color: Colors.textMuted, alignSelf: 'flex-end' },
-  timestampUser: { color: Colors.primary, opacity: 0.7 },
-
-  // Typing indicator
-  typingBubble: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.surface, borderRadius: Radius.xl,
-    padding: Spacing[3], gap: Spacing[2],
-    borderWidth: 1, borderColor: Colors.border,
-  },
+  bubbleAI: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.divider, borderBottomLeftRadius: Radius.sm, ...Shadow.sm },
+  bubbleUser: { backgroundColor: Colors.primary, borderBottomRightRadius: Radius.sm },
+  personalizedTag: { backgroundColor: Colors.primaryMuted, borderRadius: Radius.full, paddingHorizontal: Spacing[2], paddingVertical: 2, alignSelf: 'flex-start' },
+  personalizedText: { fontSize: FontSizes.xs, color: Colors.primary, fontWeight: FontWeights.semibold },
+  bubbleText: { fontSize: FontSizes.base, color: Colors.textPrimary, lineHeight: 22 },
+  bubbleTextUser: { color: '#FFFFFF' },
+  timestamp: { fontSize: FontSizes.xs, color: Colors.textMuted, alignSelf: 'flex-end' },
+  timestampUser: { color: 'rgba(255,255,255,0.7)' },
+  typingBubble: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surface, borderRadius: Radius.xl, padding: Spacing[3], gap: Spacing[2], borderWidth: 1, borderColor: Colors.divider },
   typingEmoji: { fontSize: 16 },
-  typingDots: { fontFamily: FontFamily.body, fontSize: FontSizes.base, color: Colors.primary, letterSpacing: 4 },
-
-  // Quick prompts
-  quickPromptsScroll: { maxHeight: 56 },
-  quickPromptsContent: { paddingHorizontal: Spacing[4], gap: Spacing[2], paddingBottom: Spacing[2], alignItems: 'center' },
-  quickPrompt: {
-    backgroundColor: Colors.surface, borderRadius: Radius.full,
-    paddingHorizontal: Spacing[4], paddingVertical: Spacing[2],
-    borderWidth: 1.5, borderColor: Colors.borderActive,
-  },
-  quickPromptText: { fontFamily: FontFamily.body, fontSize: FontSizes.sm, color: Colors.primary, fontWeight: FontWeights.semibold } as any,
-
-  // Input bar
-  inputBar: {
-    flexDirection: 'row', alignItems: 'flex-end',
-    padding: Spacing[3], borderTopWidth: 1,
-    borderTopColor: Colors.divider,
-    backgroundColor: Colors.surface, gap: Spacing[2],
-  },
-  input: {
-    flex: 1, borderWidth: 1.5, borderColor: Colors.border,
-    borderRadius: Radius.xl, paddingHorizontal: Spacing[4],
-    paddingVertical: Spacing[3], fontSize: FontSizes.base,
-    color: Colors.textPrimary, maxHeight: 100,
-    backgroundColor: Colors.background,
-    fontFamily: FontFamily.body,
-  },
-  sendBtn: {
-    width: 46, height: 46, borderRadius: 23,
-    backgroundColor: Colors.primary,
-    alignItems: 'center', justifyContent: 'center',
-    ...Shadow.primaryGlow,
-  },
-  sendBtnDisabled: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
-  sendIcon: { fontSize: 18, color: Colors.textInverse, marginLeft: 2 },
+  typingDots: { fontSize: FontSizes.base, color: Colors.textMuted, letterSpacing: 4 },
+  quickPromptsScroll: { maxHeight: 52 },
+  quickPromptsContent: { paddingHorizontal: Spacing[4], gap: Spacing[2], paddingBottom: Spacing[2] },
+  quickPrompt: { backgroundColor: Colors.primaryMuted, borderRadius: Radius.full, paddingHorizontal: Spacing[4], paddingVertical: Spacing[2], borderWidth: 1, borderColor: Colors.border },
+  quickPromptText: { fontSize: FontSizes.sm, color: Colors.primary, fontWeight: FontWeights.medium, whiteSpace: 'nowrap' } as any,
+  inputBar: { flexDirection: 'row', alignItems: 'flex-end', padding: Spacing[3], borderTopWidth: 1, borderTopColor: Colors.divider, backgroundColor: Colors.surface, gap: Spacing[2] },
+  input: { flex: 1, borderWidth: 1.5, borderColor: Colors.border, borderRadius: Radius.xl, paddingHorizontal: Spacing[4], paddingVertical: Spacing[3], fontSize: FontSizes.base, color: Colors.textPrimary, maxHeight: 100, backgroundColor: Colors.background },
+  sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', ...Shadow.primaryGlow },
+  sendBtnDisabled: { backgroundColor: Colors.border },
+  sendIcon: { fontSize: 16, color: '#FFFFFF', marginLeft: 2 },
 });
