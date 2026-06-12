@@ -80,7 +80,7 @@ export const Button: React.FC<ButtonProps> = ({
           style={[{ borderRadius: Radius.lg, overflow: 'hidden' }, style]}
         >
           <LinearGradient
-            colors={isDisabled ? ['#B0BEC5', '#90A4AE'] : Colors.gradientPrimary}
+            colors={isDisabled ? ['#374151', '#1F2937'] : Colors.gradientPrimary}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={[styles.base, sizeStyles.container]}

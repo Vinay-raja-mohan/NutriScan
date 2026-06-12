@@ -4,8 +4,8 @@ import {
   TouchableOpacity, StatusBar, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useUserStore } from '../../store/userStore';
-import { useWasteStore } from '../../store/wasteStore';
 import { Card } from '../../components/ui/Card';
 import { Colors } from '../../theme/colors';
 import { FontSizes, FontWeights } from '../../theme/typography';
@@ -14,7 +14,6 @@ import { getInitials, formatINR, calculateTDEE } from '../../utils/helpers';
 
 export const ProfileScreen: React.FC = () => {
   const { profile, clearProfile } = useUserStore();
-  const { tracker } = useWasteStore();
 
   if (!profile) return (
     <SafeAreaView style={styles.safe}>
@@ -34,12 +33,8 @@ export const ProfileScreen: React.FC = () => {
     moderately_active: 'Moderately Active', very_active: 'Very Active',
   };
 
-  const settings = [
-    { icon: '✏️', label: 'Edit Profile', action: () => Alert.alert('Edit Profile', 'Profile editing coming soon!') },
-    { icon: '🔔', label: 'Notification Preferences', action: () => Alert.alert('Notifications', 'Configure meal reminders') },
-    { icon: '📏', label: 'Units (Metric/Imperial)', action: () => Alert.alert('Units', 'Toggle metric/imperial') },
-    { icon: '📊', label: 'Export My Data', action: () => Alert.alert('Export', 'Data will be exported as CSV') },
-    { icon: '🗑️', label: 'Reset Profile', action: () => Alert.alert('Reset', 'This will delete all your data. Continue?', [
+  const settings: { icon: React.ReactNode; label: string; action: () => void }[] = [
+    { icon: <Ionicons name="trash-outline" size={20} color={Colors.danger} />, label: 'Reset Profile', action: () => Alert.alert('Reset', 'This will delete all your data. Continue?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Reset', style: 'destructive', onPress: clearProfile },
     ]) },
@@ -50,14 +45,17 @@ export const ProfileScreen: React.FC = () => {
       <StatusBar barStyle="light-content" />
       <SafeAreaView style={styles.safe}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-          <LinearGradient colors={Colors.gradientHero} style={styles.hero}>
+          <LinearGradient colors={['#111111', '#050505']} style={styles.hero}>
             <View style={styles.avatarCircle}>
               <Text style={styles.avatarText}>{getInitials(profile.name)}</Text>
             </View>
             <Text style={styles.heroName}>{profile.name}</Text>
-            <Text style={styles.heroStats}>{profile.age} yrs • {profile.weightKg}kg • {profile.heightCm}cm</Text>
+            <Text style={styles.heroStats}>{profile.age} yrs  {profile.weightKg}kg  {profile.heightCm}cm</Text>
             <View style={styles.goalBadge}>
-              <Text style={styles.goalBadgeText}>🎯 {goalLabels[profile.goal] ?? profile.goal}</Text>
+              <View style={styles.goalBadgeContent}>
+                <Ionicons name="flag" size={14} color={Colors.primary} />
+                <Text style={styles.goalBadgeText}>{goalLabels[profile.goal] ?? profile.goal}</Text>
+              </View>
             </View>
           </LinearGradient>
 
@@ -83,39 +81,29 @@ export const ProfileScreen: React.FC = () => {
 
             <Card>
               <Text style={styles.sectionTitle}>HEALTH SUMMARY</Text>
-              <ProfileRow icon="🥗" label="Diet" value={profile.dietType.replace(/_/g, ' ')} />
+              <ProfileRow icon={<Ionicons name="nutrition-outline" size={18} color={Colors.primary} />} label="Diet" value={profile.dietType.replace(/_/g, ' ')} />
               {profile.conditions[0] !== 'none' && (
-                <ProfileRow icon="🏥" label="Conditions" value={profile.conditions.map(c => c.replace(/_/g, ' ')).join(', ')} />
+                <ProfileRow icon={<Ionicons name="medkit-outline" size={18} color={Colors.danger} />} label="Conditions" value={profile.conditions.map(c => c.replace(/_/g, ' ')).join(', ')} />
               )}
               {profile.allergies[0] !== 'none' && (
-                <ProfileRow icon="⚠️" label="Allergies" value={profile.allergies.join(', ')} />
+                <ProfileRow icon={<Ionicons name="alert-circle-outline" size={18} color={Colors.warning} />} label="Allergies" value={profile.allergies.join(', ')} />
               )}
-              <ProfileRow icon="🍽️" label="Meals/day" value={`${profile.mealFrequency} meals`} />
-              <ProfileRow icon="🏠" label="Household" value={profile.householdSize.replace(/_/g, ' ')} />
-            </Card>
-
-            <Card>
-              <Text style={styles.sectionTitle}>THIS WEEK'S PROGRESS</Text>
-              <View style={styles.progressGrid}>
-                <ProgressStat emoji="🔥" label="Streak" value="5 days" color={Colors.warning} />
-                <ProgressStat emoji="📉" label="Weight" value="-0.3 kg" color={Colors.success} />
-                <ProgressStat emoji="✅" label="Adherence" value="78%" color={Colors.primary} />
-                <ProgressStat emoji="♻️" label="Waste Saved" value={`${tracker?.mealsFromPantry ?? 3} meals`} color={Colors.success} />
-              </View>
+              <ProfileRow icon={<Ionicons name="restaurant-outline" size={18} color={Colors.primary} />} label="Meals/day" value={`${profile.mealFrequency} meals`} />
+              <ProfileRow icon={<Ionicons name="people-outline" size={18} color={Colors.primary} />} label="Household" value={profile.householdSize.replace(/_/g, ' ')} />
             </Card>
 
             <Card>
               <Text style={styles.sectionTitle}>SETTINGS</Text>
               {settings.map((s, i) => (
                 <TouchableOpacity key={i} style={[styles.settingRow, i < settings.length - 1 && styles.settingBorder]} onPress={s.action} activeOpacity={0.7}>
-                  <Text style={styles.settingIcon}>{s.icon}</Text>
+                  <View style={styles.settingIconContainer}>{s.icon}</View>
                   <Text style={styles.settingLabel}>{s.label}</Text>
-                  <Text style={styles.settingArrow}>›</Text>
+                  <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
                 </TouchableOpacity>
               ))}
             </Card>
 
-            <Text style={styles.version}>NutriScan v1.0.0 • Made with 🌿 for healthier lives</Text>
+            <Text style={styles.version}>NutriScan v1.0.0</Text>
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -123,32 +111,25 @@ export const ProfileScreen: React.FC = () => {
   );
 };
 
-const ProfileRow: React.FC<{ icon: string; label: string; value: string }> = ({ icon, label, value }) => (
+const ProfileRow: React.FC<{ icon: React.ReactNode; label: string; value: string }> = ({ icon, label, value }) => (
   <View style={styles.profileRow}>
-    <Text style={styles.profileRowIcon}>{icon}</Text>
+    <View style={styles.profileRowIconContainer}>{icon}</View>
     <Text style={styles.profileRowLabel}>{label}</Text>
     <Text style={styles.profileRowValue} numberOfLines={1}>{value}</Text>
   </View>
 );
 
-const ProgressStat: React.FC<{ emoji: string; label: string; value: string; color: string }> = ({ emoji, label, value, color }) => (
-  <View style={styles.progressStat}>
-    <Text style={styles.progressEmoji}>{emoji}</Text>
-    <Text style={[styles.progressValue, { color }]}>{value}</Text>
-    <Text style={styles.progressLabel}>{label}</Text>
-  </View>
-);
-
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
-  scroll: { paddingBottom: 32 },
+  scroll: { paddingBottom: 120 },
   hero: { padding: Spacing[6], paddingTop: Spacing[8], alignItems: 'center', gap: Spacing[2], paddingBottom: Spacing[8] },
-  avatarCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing[2] },
+  avatarCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing[2], borderWidth: 3, borderColor: Colors.primary },
   avatarText: { fontSize: FontSizes['3xl'], fontWeight: FontWeights.bold, color: '#FFFFFF' },
   heroName: { fontSize: FontSizes['2xl'], fontWeight: FontWeights.bold, color: '#FFFFFF' },
   heroStats: { fontSize: FontSizes.sm, color: 'rgba(255,255,255,0.8)' },
-  goalBadge: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: Radius.full, paddingHorizontal: Spacing[4], paddingVertical: Spacing[2] },
-  goalBadgeText: { fontSize: FontSizes.sm, fontWeight: FontWeights.semibold, color: '#FFFFFF' },
+  goalBadge: { backgroundColor: Colors.primaryMuted, borderRadius: Radius.full, paddingHorizontal: Spacing[4], paddingVertical: Spacing[2] },
+  goalBadgeContent: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  goalBadgeText: { fontSize: FontSizes.sm, fontWeight: FontWeights.semibold, color: Colors.primary },
   body: { padding: Spacing[4], marginTop: -Spacing[4], gap: Spacing[3] },
   sectionTitle: { fontSize: FontSizes.xs, fontWeight: FontWeights.semibold, color: Colors.textMuted, letterSpacing: 1, textTransform: 'uppercase', marginBottom: Spacing[3] },
   targetRow: { flexDirection: 'row' },
@@ -157,18 +138,12 @@ const styles = StyleSheet.create({
   targetLabel: { fontSize: FontSizes.xs, color: Colors.textMuted, textAlign: 'center' },
   targetDivider: { width: 1, backgroundColor: Colors.divider },
   profileRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing[2], gap: Spacing[3] },
-  profileRowIcon: { fontSize: 18, width: 28 },
+  profileRowIconContainer: { width: 28, alignItems: 'center', justifyContent: 'center' },
   profileRowLabel: { fontSize: FontSizes.sm, color: Colors.textSecondary, width: 80 },
   profileRowValue: { flex: 1, fontSize: FontSizes.sm, fontWeight: FontWeights.semibold, color: Colors.textPrimary, textTransform: 'capitalize' },
-  progressGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[3] },
-  progressStat: { width: '47%', backgroundColor: Colors.background, borderRadius: Radius.lg, padding: Spacing[3], alignItems: 'center', gap: 4 },
-  progressEmoji: { fontSize: 24 },
-  progressValue: { fontSize: FontSizes.lg, fontWeight: FontWeights.bold },
-  progressLabel: { fontSize: FontSizes.xs, color: Colors.textMuted },
   settingRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing[4], gap: Spacing[3] },
   settingBorder: { borderBottomWidth: 1, borderBottomColor: Colors.divider },
-  settingIcon: { fontSize: 20, width: 28 },
+  settingIconContainer: { width: 28, alignItems: 'center', justifyContent: 'center' },
   settingLabel: { flex: 1, fontSize: FontSizes.base, color: Colors.textPrimary },
-  settingArrow: { fontSize: FontSizes.xl, color: Colors.textMuted },
   version: { fontSize: FontSizes.xs, color: Colors.textMuted, textAlign: 'center', marginTop: Spacing[4] },
 });

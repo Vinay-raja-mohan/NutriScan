@@ -22,8 +22,17 @@ export const useWasteStore = create<WasteState>((set, get) => ({
   },
 
   addWasteSaved: async (meals, grams, costINR) => {
-    const current = get().tracker;
-    if (!current) return;
+    let current = get().tracker;
+    if (!current) {
+      current = {
+        userId: 'temp',
+        weekOf: new Date().toISOString().split('T')[0],
+        mealsFromPantry: 0,
+        weightSavedGrams: 0,
+        moneySavedINR: 0,
+        co2AvoidedKg: 0,
+      };
+    }
     const updated: WasteTracker = {
       ...current,
       mealsFromPantry: current.mealsFromPantry + meals,

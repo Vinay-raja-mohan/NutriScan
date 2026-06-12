@@ -6,6 +6,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { FontSizes, FontWeights, FontFamily } from '../theme/typography';
 import { Radius, Spacing } from '../theme/spacing';
@@ -52,7 +53,10 @@ export const WaterTracker: React.FC<WaterTrackerProps> = ({
 
       <View style={styles.content}>
         <View style={styles.textContainer}>
-          <Text style={styles.title}>💧 Hydration</Text>
+          <View style={styles.titleRow}>
+            <Ionicons name="water" size={18} color={Colors.primary} />
+            <Text style={styles.title}>Hydration</Text>
+          </View>
           <Text style={styles.count}>
             <Text style={styles.countFilled}>{glasses}</Text>
             <Text style={styles.countTotal}> / {total} glasses</Text>
@@ -61,10 +65,10 @@ export const WaterTracker: React.FC<WaterTrackerProps> = ({
             {glasses === 0
               ? 'Tap + to log water'
               : glasses < 4
-              ? 'Stay hydrated 🌿'
+              ? 'Stay hydrated'
               : glasses < total
               ? 'Almost there!'
-              : '🎉 Daily goal reached!'}
+              : 'Daily goal reached!'}
           </Text>
         </View>
 
@@ -94,7 +98,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(14, 165, 233, 0.2)', // Cyan transparent
+    backgroundColor: 'rgba(245, 158, 11, 0.15)', // Amber tint
   },
   content: {
     flex: 1,
@@ -105,6 +109,12 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     gap: 2,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
   },
   title: {
     fontFamily: FontFamily.display,

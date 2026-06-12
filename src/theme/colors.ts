@@ -1,71 +1,71 @@
-// NutriScan Color Theme — Bioluminescent Glass
+// NutriScan Color Theme — Obsidian & Amber
 export const Colors = {
-  // Bioluminescent Primary Gradients
-  primary: '#0EA5E9', // Cyan
-  primaryLight: '#38BDF8',
-  primaryDark: '#0284C7',
-  primaryMuted: 'rgba(14, 165, 233, 0.1)', // Glow shadow
+  // Amber Primary
+  primary: '#F59E0B',
+  primaryLight: '#FBBF24',
+  primaryDark: '#D97706',
+  primaryMuted: 'rgba(245, 158, 11, 0.12)',
 
-  // Emerald Accent
-  accent: '#10B981', // Neon Emerald
-  accentLight: '#34D399',
-  accentDark: '#059669',
+  // Indigo Accent
+  accent: '#6366F1',
+  accentLight: '#818CF8',
+  accentDark: '#4F46E5',
 
-  // Backgrounds (Zinc)
-  background: '#09090B',
-  surface: '#18181B',
-  surfaceElevated: '#27272A',
-  card: 'rgba(24, 24, 27, 0.6)', // Glassmorphism
+  // Backgrounds (Deep Obsidian)
+  background: '#050505',
+  surface: '#111111',
+  surfaceElevated: '#1A1A1A',
+  card: 'rgba(17, 17, 17, 0.75)',
 
   // Text
-  textPrimary: '#FAFAFA',
-  textSecondary: '#A1A1AA',
-  textMuted: '#52525B',
-  textInverse: '#09090B',
+  textPrimary: '#F5F5F5',
+  textSecondary: '#9CA3AF',
+  textMuted: '#4B5563',
+  textInverse: '#050505',
 
   // Semantic
-  success: '#10B981', // Safe
-  successLight: 'rgba(16, 185, 129, 0.15)',
-  warning: '#F59E0B', // Caution
-  warningLight: 'rgba(245, 158, 11, 0.15)',
-  danger: '#EF4444', // Avoid
-  dangerLight: 'rgba(239, 68, 68, 0.15)',
+  success: '#22C55E',
+  successLight: 'rgba(34, 197, 94, 0.12)',
+  warning: '#F59E0B',
+  warningLight: 'rgba(245, 158, 11, 0.12)',
+  danger: '#EF4444',
+  dangerLight: 'rgba(239, 68, 68, 0.12)',
   info: '#3B82F6',
-  infoLight: 'rgba(59, 130, 246, 0.15)',
+  infoLight: 'rgba(59, 130, 246, 0.12)',
 
-  // Macros (Distinct layered colors for SVG rings)
-  protein: '#8B5CF6', // Violet
-  carbs: '#F97316', // Sunset Orange
-  fat: '#F43F5E', // Rose
+  // Macros
+  protein: '#8B5CF6',
+  carbs: '#F97316',
+  fat: '#EC4899',
 
-  // Gradients (start, end)
-  gradientPrimary: ['#0EA5E9', '#10B981'] as [string, string],
-  gradientSoft: ['#18181B', '#09090B'] as [string, string],
-  gradientCard: ['rgba(24, 24, 27, 0.8)', 'rgba(9, 9, 11, 0.8)'] as [string, string],
-  gradientHero: ['#0EA5E9', '#10B981', '#34D399'] as [string, string, string],
+  // Gradients
+  gradientPrimary: ['#F59E0B', '#D97706'] as [string, string],
+  gradientSoft: ['#111111', '#050505'] as [string, string],
+  gradientCard: ['rgba(17, 17, 17, 0.85)', 'rgba(5, 5, 5, 0.85)'] as [string, string],
+  gradientHero: ['#111111', '#0A0A0A', '#050505'] as [string, string, string],
 
   // Tab bar
-  tabActive: '#10B981',
-  tabInactive: '#52525B',
-  tabBackground: '#09090B',
-  tabBorder: '#27272A',
+  tabActive: '#F59E0B',
+  tabInactive: '#4B5563',
+  tabBackground: '#0A0A0A',
+  tabBorder: '#1A1A1A',
 
   // Divider
-  divider: '#27272A',
-  border: 'rgba(255, 255, 255, 0.05)',
+  divider: '#1F1F1F',
+  border: 'rgba(255, 255, 255, 0.06)',
 
   // Overlay
-  overlay: 'rgba(0,0,0,0.7)',
-  overlayLight: 'rgba(24, 24, 27, 0.6)',
+  overlay: 'rgba(0,0,0,0.8)',
+  overlayLight: 'rgba(17, 17, 17, 0.7)',
 
   // Meal status
-  mealLogged: '#10B981',
-  mealUpcoming: '#52525B',
+  mealLogged: '#22C55E',
+  mealUpcoming: '#4B5563',
   mealSkipped: '#EF4444',
 
   // Water
-  waterFilled: '#38BDF8',
-  waterEmpty: '#18181B',
+  waterFilled: '#FBBF24',
+  waterEmpty: '#111111',
 
   // Transparent
   transparent: 'transparent',

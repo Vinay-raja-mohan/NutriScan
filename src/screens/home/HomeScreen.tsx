@@ -3,9 +3,11 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   SafeAreaView, StatusBar,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { useUserStore } from '../../store/userStore';
 import { usePlanStore } from '../../store/planStore';
 import { useWasteStore } from '../../store/wasteStore';
@@ -20,17 +22,46 @@ import { MOCK_DIET_PLAN } from '../../data/mockDietPlan';
 import { getGreeting, getDayKey, formatINR, calculateTDEE } from '../../utils/helpers';
 import { MealType, DayKey } from '../../types';
 
-const MEAL_ICONS: Record<MealType, string> = {
-  breakfast: '🌅',
-  lunch: '☀️',
-  dinner: '🌙',
-  snack: '🍎',
+/** Colored letter badge config for each meal type */
+const MEAL_BADGE: Record<MealType, { letter: string; color: string }> = {
+  breakfast: { letter: 'B', color: '#F59E0B' },
+  lunch:     { letter: 'L', color: '#22C55E' },
+  dinner:    { letter: 'D', color: '#6366F1' },
+  snack:     { letter: 'S', color: '#EC4899' },
+};
+
+/** Renders a colored circle with a single letter inside */
+const MealBadge: React.FC<{ meal: MealType; size?: number }> = ({ meal, size = 32 }) => {
+  const { letter, color } = MEAL_BADGE[meal];
+  return (
+    <View
+      style={[
+        styles.mealBadge,
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: color + '22',
+        },
+      ]}
+    >
+      <Text
+        style={[
+          styles.mealBadgeLetter,
+          { fontSize: size * 0.45, color },
+        ]}
+      >
+        {letter}
+      </Text>
+    </View>
+  );
 };
 
 export const HomeScreen: React.FC = () => {
   const { profile } = useUserStore();
   const { weeklyPlan, todayWaterGlasses, setWater, loadWater, setPlan, loadPlan, updateMealStatus } = usePlanStore();
   const { tracker } = useWasteStore();
+  const navigation = useNavigation<any>();
 
   useEffect(() => {
     loadWater();
@@ -88,11 +119,11 @@ export const HomeScreen: React.FC = () => {
     updateMealStatus(dayKey, meal, next);
   };
 
-  const quickActions = [
-    { icon: '🔍', label: 'Scan Label' },
-    { icon: '🥦', label: 'Scan Fridge' },
-    { icon: '🤖', label: 'Ask AI' },
-    { icon: '📝', label: 'Edit Plan' },
+  const quickActions: { iconName: React.ComponentProps<typeof Ionicons>['name']; label: string; onPress: () => void }[] = [
+    { iconName: 'scan-outline',        label: 'Scan Food',   onPress: () => navigation.navigate('Scanner', { initialTab: 'label' }) },
+    { iconName: 'restaurant-outline',  label: 'Scan Recipe', onPress: () => navigation.navigate('Scanner', { initialTab: 'ingredient' }) },
+    { iconName: 'chatbubble-outline',  label: 'Ask AI',      onPress: () => navigation.navigate('Chat') },
+    { iconName: 'create-outline',      label: 'Edit Plan',   onPress: () => navigation.navigate('Planner') },
   ];
 
   return (
@@ -104,8 +135,8 @@ export const HomeScreen: React.FC = () => {
           <LinearGradient colors={Colors.gradientSoft} style={styles.header}>
             <BlurView intensity={20} tint="dark" style={styles.headerGlassPill}>
               <View>
-                <Text style={styles.greeting}>{getGreeting()}, {profile?.name?.split(' ')[0] ?? 'there'}! 🌿</Text>
-                <Text style={styles.headerSub}>AI Health Command Center</Text>
+                <Text style={styles.greeting}>{getGreeting()}, {profile?.name?.split(' ')[0] ?? 'there'}!</Text>
+                <Text style={styles.headerSub}>Your Daily Overview</Text>
               </View>
             </BlurView>
 
@@ -161,7 +192,7 @@ export const HomeScreen: React.FC = () => {
                   return (
                     <BlurView key={meal} intensity={20} tint="dark" style={styles.glassLogCard}>
                       <View style={styles.glassLogHeader}>
-                        <Text style={styles.mealIcon}>{MEAL_ICONS[meal]}</Text>
+                        <MealBadge meal={meal} size={32} />
                         <View style={styles.scoreShield}>
                           <Text style={styles.scoreText}>95%</Text>
                         </View>
@@ -174,7 +205,7 @@ export const HomeScreen: React.FC = () => {
                 {/* Add a prompt card if nothing is logged */}
                 {(!todayPlan || !meals.some(m => todayPlan[m].status === 'logged')) && (
                   <BlurView intensity={20} tint="dark" style={[styles.glassLogCard, { justifyContent: 'center', alignItems: 'center' }]}>
-                     <Text style={{ fontSize: 24 }}>📷</Text>
+                     <Ionicons name="camera-outline" size={24} color={Colors.textSecondary} />
                      <Text style={[styles.glassLogName, { textAlign: 'center', marginTop: Spacing[2] }]}>Nothing logged yet</Text>
                      <Text style={[styles.glassLogCals, { textAlign: 'center' }]}>Scan food to start</Text>
                   </BlurView>
@@ -185,13 +216,18 @@ export const HomeScreen: React.FC = () => {
             {/* Waste Saved */}
             <Card style={[styles.card, styles.wasteCard]}>
               <View style={styles.wasteRow}>
-                <Text style={styles.wasteEmoji}>♻️</Text>
+                <View style={styles.wasteIconCircle}>
+                  <Ionicons name="leaf-outline" size={24} color={Colors.success} />
+                </View>
                 <View style={styles.wasteInfo}>
                   <Text style={styles.wasteTitle}>WASTE SAVED THIS WEEK</Text>
-                  <Text style={styles.wasteValue}>{tracker?.mealsFromPantry ?? 3} meals from leftovers</Text>
-                  <Text style={styles.wasteMoney}>Est. {formatINR(tracker?.moneySavedINR ?? 240)} saved</Text>
+                  <Text style={styles.wasteValue}>{tracker?.mealsFromPantry ?? 0} meals from leftovers</Text>
+                  <Text style={styles.wasteMoney}>Est. {formatINR(tracker?.moneySavedINR ?? 0)} saved</Text>
                 </View>
-                <Text style={styles.co2Text}>🌍{"\n"}{(tracker?.co2AvoidedKg ?? 0.8).toFixed(1)}kg CO₂</Text>
+                <View style={styles.co2Container}>
+                  <Ionicons name="globe-outline" size={18} color={Colors.success} />
+                  <Text style={styles.co2Text}>{(tracker?.co2AvoidedKg ?? 0).toFixed(1)}kg CO2</Text>
+                </View>
               </View>
             </Card>
 
@@ -199,8 +235,8 @@ export const HomeScreen: React.FC = () => {
             <Text style={styles.sectionTitle}>QUICK ACTIONS</Text>
             <View style={styles.quickGrid}>
               {quickActions.map((a, i) => (
-                <TouchableOpacity key={i} style={styles.quickBtn} activeOpacity={0.8}>
-                  <Text style={styles.quickIcon}>{a.icon}</Text>
+                <TouchableOpacity key={i} style={styles.quickBtn} activeOpacity={0.8} onPress={a.onPress}>
+                  <Ionicons name={a.iconName} size={28} color={Colors.primary} />
                   <Text style={styles.quickLabel}>{a.label}</Text>
                 </TouchableOpacity>
               ))}
@@ -222,7 +258,7 @@ export const HomeScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
-  scroll: { paddingBottom: 32 },
+  scroll: { paddingBottom: 120 },
   header: { padding: Spacing[5], paddingTop: Spacing[4], paddingBottom: Spacing[8] },
   headerGlassPill: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing[6], padding: Spacing[4], borderRadius: Radius['2xl'], overflow: 'hidden', borderWidth: 1, borderColor: Colors.border },
   greeting: { fontFamily: FontFamily.display, fontSize: FontSizes.xl, fontWeight: FontWeights.bold, color: Colors.textPrimary },
@@ -247,17 +283,18 @@ const styles = StyleSheet.create({
   scoreText: { fontFamily: FontFamily.display, fontSize: 10, fontWeight: FontWeights.bold, color: Colors.success },
   glassLogName: { fontFamily: FontFamily.body, fontSize: FontSizes.sm, fontWeight: FontWeights.medium, color: Colors.textPrimary, flex: 1 },
   glassLogCals: { fontFamily: FontFamily.display, fontSize: FontSizes.xs, color: Colors.primaryLight, marginTop: 4, fontWeight: FontWeights.bold },
-  mealIcon: { fontSize: 28 },
+  mealBadge: { alignItems: 'center', justifyContent: 'center' },
+  mealBadgeLetter: { fontFamily: FontFamily.display, fontWeight: FontWeights.bold },
   emptyText: { fontSize: FontSizes.sm, color: Colors.textMuted, textAlign: 'center', paddingVertical: Spacing[4] },
   wasteRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3] },
-  wasteEmoji: { fontSize: 32 },
+  wasteIconCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.successLight, alignItems: 'center', justifyContent: 'center' },
   wasteInfo: { flex: 1 },
   wasteTitle: { fontSize: FontSizes.xs, fontWeight: FontWeights.semibold, color: Colors.success, letterSpacing: 0.8, textTransform: 'uppercase' },
   wasteValue: { fontSize: FontSizes.base, fontWeight: FontWeights.semibold, color: Colors.textPrimary, marginTop: 2 },
   wasteMoney: { fontSize: FontSizes.sm, color: Colors.success, marginTop: 2 },
+  co2Container: { alignItems: 'center', gap: 2 },
   co2Text: { fontSize: FontSizes.xs, color: Colors.success, textAlign: 'center', fontWeight: FontWeights.semibold },
   quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[3], marginBottom: Spacing[2] },
   quickBtn: { flex: 1, minWidth: '45%', backgroundColor: Colors.surface, borderRadius: Radius.xl, padding: Spacing[4], alignItems: 'center', gap: Spacing[2], borderWidth: 1, borderColor: Colors.border, ...Shadow.sm },
-  quickIcon: { fontSize: 28 },
   quickLabel: { fontSize: FontSizes.sm, fontWeight: FontWeights.semibold, color: Colors.textPrimary, textAlign: 'center' },
 });

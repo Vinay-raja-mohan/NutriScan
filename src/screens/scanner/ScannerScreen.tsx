@@ -15,20 +15,30 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../theme/colors';
 import { FontSizes, FontWeights, FontFamily } from '../../theme/typography';
-import { Spacing, Radius } from '../../theme/spacing';
+import { Spacing, Radius, Shadow } from '../../theme/spacing';
 import { Button } from '../../components/ui/Button';
 import { useUserStore } from '../../store/userStore';
+import { useWasteStore } from '../../store/wasteStore';
 import { callGeminiVisionJSON, callGeminiJSON } from '../../services/geminiApi';
 import { ScannedLabelItem, Recipe, DetectedIngredient } from '../../types';
 import { generateId } from '../../utils/helpers';
+import { useRoute } from '@react-navigation/native';
 
 type Tab = 'label' | 'ingredient';
 
 export const ScannerScreen: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<Tab>('label');
+  const route = useRoute<any>();
+  const initialTab = route.params?.initialTab as Tab | undefined;
+  
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab || 'label');
   const [isScanning, setIsScanning] = useState(false);
+
+  useEffect(() => {
+    if (initialTab) setActiveTab(initialTab);
+  }, [initialTab]);
   const [scannedItem, setScannedItem] = useState<ScannedLabelItem | null>(null);
   const [detectedIngredients, setDetectedIngredients] = useState<DetectedIngredient[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -37,6 +47,7 @@ export const ScannerScreen: React.FC = () => {
   const [capturedImageUri, setCapturedImageUri] = useState<string | null>(null);
 
   const { profile } = useUserStore();
+  const { addWasteSaved } = useWasteStore();
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<any>(null);
 
@@ -176,9 +187,23 @@ Return a JSON array of recipe objects with: id, name, emoji, prepTimeMin, macros
     }
   };
 
+  const handleCookRecipe = async () => {
+    if (!selectedRecipe) return;
+    
+    // Assume 1 meal, 150g of ingredients saved, and 45 INR saved.
+    // In a real app this would be calculated dynamically.
+    await addWasteSaved(1, 150, 45);
+    
+    Alert.alert(
+      "Eco-Warrior!", 
+      "You just cooked a meal from your fridge!\nYou saved 150g of food and reduced CO2 emissions.\n\nCheck your Diet Planner > Waste tab for stats."
+    );
+    setSelectedRecipe(null);
+  };
+
   const verdictColor = (verdict: string) => verdict === 'safe' ? Colors.success : verdict === 'caution' ? Colors.warning : Colors.danger;
   const verdictBg = (verdict: string) => verdict === 'safe' ? Colors.successLight : verdict === 'caution' ? Colors.warningLight : Colors.dangerLight;
-  const verdictEmoji = (verdict: string) => verdict === 'safe' ? '✅' : verdict === 'caution' ? '⚠️' : '❌';
+  const verdictIconName = (verdict: string): keyof typeof Ionicons.glyphMap => verdict === 'safe' ? 'checkmark-circle' : verdict === 'caution' ? 'warning' : 'close-circle';
 
   const hasResults = scannedItem || detectedIngredients.length > 0;
 
@@ -201,9 +226,16 @@ Return a JSON array of recipe objects with: id, name, emoji, prepTimeMin, macros
                     style={[styles.tab, activeTab === tab && styles.tabActive]}
                     onPress={() => { setActiveTab(tab); resetScanner(); Haptics.selectionAsync(); }}
                   >
-                    <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                      {tab === 'label' ? '🏷️ Food' : '🥦 Recipe'}
-                    </Text>
+                    <View style={styles.tabContent}>
+                      <Ionicons
+                        name={tab === 'label' ? 'pricetag' : 'restaurant'}
+                        size={16}
+                        color={activeTab === tab ? '#FFFFFF' : 'rgba(255,255,255,0.7)'}
+                      />
+                      <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+                        {tab === 'label' ? 'Food' : 'Recipe'}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -223,16 +255,9 @@ Return a JSON array of recipe objects with: id, name, emoji, prepTimeMin, macros
           <View style={styles.actionRowWrapper}>
             <Button
               label={activeTab === 'label' ? 'Scan Food' : 'Scan Ingredients'}
-              onPress={() => handleScan(activeTab, false)}
+              onPress={() => handleScan(activeTab, true)}
               size="lg"
               style={{ flex: 1 }}
-            />
-            <Button
-              label="Crop"
-              onPress={() => handleScan(activeTab, true)}
-              variant="secondary"
-              size="lg"
-              style={{ paddingHorizontal: Spacing[4] }}
             />
           </View>
         </>
@@ -269,25 +294,36 @@ Return a JSON array of recipe objects with: id, name, emoji, prepTimeMin, macros
                         {scannedItem.brand && <Text style={styles.brandName}>{scannedItem.brand}</Text>}
                       </View>
                       <View style={[styles.scoreBadge, { backgroundColor: verdictBg(scannedItem.verdict) }]}>
-                        <Text style={styles.scoreEmoji}>{verdictEmoji(scannedItem.verdict)}</Text>
+                        <Ionicons
+                          name={verdictIconName(scannedItem.verdict)}
+                          size={20}
+                          color={verdictColor(scannedItem.verdict)}
+                        />
                         <Text style={[styles.scoreNum, { color: verdictColor(scannedItem.verdict) }]}>
                           {scannedItem.safetyScore}/100
                         </Text>
                       </View>
                     </View>
                     <View style={[styles.verdictBanner, { backgroundColor: verdictBg(scannedItem.verdict) }]}>
-                      <Text style={[styles.verdictText, { color: verdictColor(scannedItem.verdict) }]}>
-                        {verdictEmoji(scannedItem.verdict)} {scannedItem.verdict.toUpperCase()}
-                      </Text>
+                      <View style={styles.verdictRow}>
+                        <Ionicons
+                          name={verdictIconName(scannedItem.verdict)}
+                          size={18}
+                          color={verdictColor(scannedItem.verdict)}
+                        />
+                        <Text style={[styles.verdictText, { color: verdictColor(scannedItem.verdict) }]}>
+                          {scannedItem.verdict.toUpperCase()}
+                        </Text>
+                      </View>
                     </View>
 
                     {/* Nutrition Info */}
                     {scannedItem.nutrition && (
                        <View style={styles.nutritionBox}>
                          <Text style={styles.nutritionTitle}>Nutrition per {scannedItem.nutrition.servingSize}</Text>
-                         <Text style={styles.nutritionText}>🔥 Calories: {scannedItem.nutrition.calories} kcal</Text>
-                         <Text style={styles.nutritionText}>🥩 Protein: {scannedItem.nutrition.protein}g | 🍞 Carbs: {scannedItem.nutrition.carbs}g</Text>
-                         <Text style={styles.nutritionText}>🥑 Fat: {scannedItem.nutrition.fat}g</Text>
+                         <Text style={styles.nutritionText}>Calories: {scannedItem.nutrition.calories} kcal</Text>
+                         <Text style={styles.nutritionText}>Protein: {scannedItem.nutrition.protein}g  |  Carbs: {scannedItem.nutrition.carbs}g</Text>
+                         <Text style={styles.nutritionText}>Fat: {scannedItem.nutrition.fat}g</Text>
                        </View>
                     )}
 
@@ -298,16 +334,21 @@ Return a JSON array of recipe objects with: id, name, emoji, prepTimeMin, macros
                 {/* RECIPE RESULTS */}
                 {activeTab === 'ingredient' && detectedIngredients.length > 0 && !showRecipes && (
                   <View style={styles.resultContainer}>
-                    <Text style={styles.flagsTitle}>✅ Detected {detectedIngredients.length} Ingredients</Text>
+                    <View style={styles.detectedHeader}>
+                      <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
+                      <Text style={styles.flagsTitle}>Detected {detectedIngredients.length} Ingredients</Text>
+                    </View>
                     <View style={styles.ingredientGrid}>
                       {detectedIngredients.map((ing, i) => (
                         <View key={i} style={[styles.ingredientChip, ing.expiringSoon && styles.ingredientExpiring]}>
                           <Text style={styles.ingredientName}>{ing.name}</Text>
-                          {ing.expiringSoon && <Text style={styles.expiringTag}>🕐</Text>}
+                          {ing.expiringSoon && (
+                            <Ionicons name="time-outline" size={12} color={Colors.warning} />
+                          )}
                         </View>
                       ))}
                     </View>
-                    <Button label="🍳 Generate Recipes" onPress={handleGenerateRecipes} size="lg" fullWidth style={{ marginTop: Spacing[4] }} />
+                    <Button label="Generate Recipes" onPress={handleGenerateRecipes} size="lg" fullWidth style={{ marginTop: Spacing[4] }} />
                     <Button label="Scan Again" onPress={resetScanner} variant="secondary" style={{ marginTop: Spacing[2] }} />
                   </View>
                 )}
@@ -315,14 +356,22 @@ Return a JSON array of recipe objects with: id, name, emoji, prepTimeMin, macros
                 {/* GENERATED RECIPES */}
                 {activeTab === 'ingredient' && showRecipes && (
                   <View style={{ gap: Spacing[3] }}>
-                    <Text style={styles.flagsTitle}>🍛 Recipes for your ingredients</Text>
+                    <View style={styles.detectedHeader}>
+                      <Ionicons name="restaurant" size={20} color={Colors.primary} />
+                      <Text style={styles.flagsTitle}>Recipes for your ingredients</Text>
+                    </View>
                     {recipes.map(recipe => (
                       <TouchableOpacity key={recipe.id} onPress={() => setSelectedRecipe(recipe)} activeOpacity={0.85}>
                         <View style={styles.recipeCard}>
-                          <Text style={styles.recipeEmoji}>{recipe.emoji}</Text>
+                          <Ionicons name="restaurant" size={28} color={Colors.primary} />
                           <View style={{ flex: 1 }}>
                             <Text style={styles.recipeName}>{recipe.name}</Text>
-                            <Text style={styles.recipeMeta}>⏱ {recipe.prepTimeMin} min  🔥 {recipe.macros.calories} cal</Text>
+                            <View style={styles.recipeMetaRow}>
+                              <Ionicons name="time-outline" size={12} color={Colors.textMuted} />
+                              <Text style={styles.recipeMeta}>{recipe.prepTimeMin} min</Text>
+                              <Ionicons name="flame-outline" size={12} color={Colors.textMuted} />
+                              <Text style={styles.recipeMeta}>{recipe.macros.calories} cal</Text>
+                            </View>
                           </View>
                         </View>
                       </TouchableOpacity>
@@ -342,16 +391,24 @@ Return a JSON array of recipe objects with: id, name, emoji, prepTimeMin, macros
           <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }}>
             <ScrollView contentContainerStyle={{ padding: Spacing[5] }}>
               <TouchableOpacity onPress={() => setSelectedRecipe(null)} style={styles.closeBtn}>
-                <Text style={styles.closeBtnText}>✕ Close</Text>
+                <Ionicons name="close-circle" size={24} color={Colors.primary} />
               </TouchableOpacity>
-              <Text style={styles.modalEmoji}>{selectedRecipe.emoji}</Text>
+              <View style={styles.modalIconContainer}>
+                <Ionicons name="restaurant" size={56} color={Colors.primary} />
+              </View>
               <Text style={styles.modalTitle}>{selectedRecipe.name}</Text>
               
               <Text style={styles.recipeSubTitle}>Ingredients</Text>
-              {selectedRecipe.ingredients.map((ing, i) => <Text key={i} style={styles.recipeStepText}>• {ing}</Text>)}
+              {selectedRecipe.ingredients.map((ing, i) => <Text key={i} style={styles.recipeStepText}>{'\u2022'} {ing}</Text>)}
               
               <Text style={[styles.recipeSubTitle, { marginTop: Spacing[4] }]}>Instructions</Text>
               {selectedRecipe.steps.map((step, i) => <Text key={i} style={styles.recipeStepText}>{i + 1}. {step}</Text>)}
+              
+              <Button 
+                label="Log as Cooked" 
+                onPress={handleCookRecipe} 
+                style={{ marginTop: Spacing[6], marginBottom: Spacing[8] }}
+              />
             </ScrollView>
           </SafeAreaView>
         )}
@@ -369,8 +426,9 @@ const styles = StyleSheet.create({
   title: { fontFamily: FontFamily.display, fontSize: FontSizes.xl, fontWeight: FontWeights.bold, color: '#FFFFFF', marginBottom: Spacing[3], textAlign: 'center' },
   tabRow: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: Radius.lg, padding: 4 },
   tab: { flex: 1, paddingVertical: Spacing[2], borderRadius: Radius.md, alignItems: 'center' },
-  tabActive: { backgroundColor: 'rgba(255,255,255,0.2)' },
-  tabText: { fontFamily: FontFamily.body, fontSize: FontSizes.sm, fontWeight: FontWeights.medium, color: 'rgba(255,255,255,0.7)' },
+  tabActive: { backgroundColor: Colors.primary, ...Shadow.primaryGlow },
+  tabContent: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  tabText: { fontFamily: FontFamily.body, fontSize: FontSizes.base, fontWeight: FontWeights.medium, color: 'rgba(255,255,255,0.7)' },
   tabTextActive: { color: '#FFFFFF', fontWeight: FontWeights.bold },
   viewfinderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   viewfinderBox: { width: 260, height: 260, position: 'relative' },
@@ -379,37 +437,36 @@ const styles = StyleSheet.create({
   scanCornerBL: { position: 'absolute', bottom: 0, left: 0, width: 40, height: 40, borderBottomWidth: 4, borderLeftWidth: 4, borderColor: Colors.primary, borderBottomLeftRadius: 16 },
   scanCornerBR: { position: 'absolute', bottom: 0, right: 0, width: 40, height: 40, borderBottomWidth: 4, borderRightWidth: 4, borderColor: Colors.primary, borderBottomRightRadius: 16 },
   laserLine: { width: '100%', height: 2, backgroundColor: Colors.primary, shadowColor: Colors.primary, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 10, elevation: 5 },
-  actionRowWrapper: { position: 'absolute', bottom: Spacing[8], left: Spacing[4], right: Spacing[4], flexDirection: 'row', gap: Spacing[3] },
+  actionRowWrapper: { position: 'absolute', bottom: 110, left: Spacing[4], right: Spacing[4], flexDirection: 'row', gap: Spacing[3] },
   fullScreenResults: { ...StyleSheet.absoluteFillObject, backgroundColor: Colors.background, zIndex: 20 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { fontFamily: FontFamily.body, fontSize: FontSizes.base, color: '#FFFFFF', marginTop: Spacing[4] },
-  resultsScroll: { padding: Spacing[5], paddingBottom: Spacing[8] },
+  resultsScroll: { padding: Spacing[5], paddingBottom: 120 },
   previewThumbnail: { width: '100%', height: 200, borderRadius: Radius.xl, marginBottom: Spacing[4], borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
   resultContainer: { gap: Spacing[3], backgroundColor: Colors.surface, padding: Spacing[5], borderRadius: Radius['2xl'], borderWidth: 1, borderColor: Colors.border },
   resultHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing[3] },
   itemName: { fontFamily: FontFamily.display, fontSize: FontSizes.xl, fontWeight: FontWeights.bold, color: Colors.textPrimary },
   brandName: { fontFamily: FontFamily.body, fontSize: FontSizes.sm, color: Colors.textMuted, marginTop: 2 },
   scoreBadge: { borderRadius: Radius.xl, padding: Spacing[3], alignItems: 'center', minWidth: 72 },
-  scoreEmoji: { fontSize: 20 },
   scoreNum: { fontFamily: FontFamily.display, fontSize: FontSizes.sm, fontWeight: FontWeights.bold, marginTop: 2 },
   verdictBanner: { borderRadius: Radius.lg, padding: Spacing[3], alignItems: 'center', marginTop: Spacing[2] },
+  verdictRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   verdictText: { fontFamily: FontFamily.display, fontSize: FontSizes.base, fontWeight: FontWeights.bold },
   nutritionBox: { backgroundColor: 'rgba(255,255,255,0.05)', padding: Spacing[4], borderRadius: Radius.lg, marginTop: Spacing[2] },
-  nutritionTitle: { fontFamily: FontFamily.body, fontSize: FontSizes.xs, color: Colors.textMuted, marginBottom: Spacing[2], textTransform: 'uppercase', letterSpacing: 1 },
-  nutritionText: { fontFamily: FontFamily.body, fontSize: FontSizes.sm, color: Colors.textPrimary, marginBottom: 4 },
+  nutritionTitle: { fontFamily: FontFamily.body, fontSize: FontSizes.sm, color: Colors.textMuted, marginBottom: Spacing[3], textTransform: 'uppercase', letterSpacing: 1 },
+  nutritionText: { fontFamily: FontFamily.display, fontSize: FontSizes.lg, color: Colors.textPrimary, marginBottom: 8, fontWeight: FontWeights.medium },
+  detectedHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   flagsTitle: { fontFamily: FontFamily.display, fontSize: FontSizes.base, fontWeight: FontWeights.semibold, color: Colors.textPrimary },
   ingredientGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[2], marginTop: Spacing[2] },
   ingredientChip: { backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: Radius.full, paddingHorizontal: Spacing[3], paddingVertical: Spacing[1], flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
   ingredientExpiring: { backgroundColor: Colors.warningLight },
   ingredientName: { fontFamily: FontFamily.body, fontSize: FontSizes.sm, fontWeight: FontWeights.medium, color: Colors.textPrimary },
-  expiringTag: { fontSize: FontSizes.xs },
   recipeCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3], backgroundColor: Colors.surface, padding: Spacing[4], borderRadius: Radius.xl, borderWidth: 1, borderColor: Colors.border },
-  recipeEmoji: { fontSize: 32 },
   recipeName: { fontFamily: FontFamily.display, fontSize: FontSizes.base, fontWeight: FontWeights.bold, color: Colors.textPrimary },
-  recipeMeta: { fontFamily: FontFamily.body, fontSize: FontSizes.xs, color: Colors.textMuted, marginTop: 2 },
+  recipeMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  recipeMeta: { fontFamily: FontFamily.body, fontSize: FontSizes.xs, color: Colors.textMuted },
   closeBtn: { alignSelf: 'flex-start', marginBottom: Spacing[4] },
-  closeBtnText: { fontFamily: FontFamily.body, fontSize: FontSizes.base, fontWeight: FontWeights.semibold, color: Colors.primary },
-  modalEmoji: { fontSize: 56, textAlign: 'center', marginBottom: Spacing[2] },
+  modalIconContainer: { alignItems: 'center', marginBottom: Spacing[2] },
   modalTitle: { fontFamily: FontFamily.display, fontSize: FontSizes['2xl'], fontWeight: FontWeights.bold, color: Colors.textPrimary, textAlign: 'center' },
   recipeSubTitle: { fontFamily: FontFamily.display, fontSize: FontSizes.lg, fontWeight: FontWeights.bold, color: Colors.textPrimary, marginBottom: Spacing[2] },
   recipeStepText: { fontFamily: FontFamily.body, fontSize: FontSizes.base, color: Colors.textSecondary, marginBottom: Spacing[2], lineHeight: 24 },

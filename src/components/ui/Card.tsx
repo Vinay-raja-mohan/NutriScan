@@ -20,7 +20,8 @@ export const Card: React.FC<CardProps> = ({
 }) => {
   const shadowStyle = shadow === 'none' ? {} : Shadow[shadow];
   return (
-    <BlurView intensity={30} tint="dark" style={[styles.card, shadowStyle, { padding }, style]}>
+    <BlurView intensity={20} tint="dark" style={[styles.card, shadowStyle, { padding }, style]}>
+      <View style={styles.cardInnerOverlay} />
       {children}
     </BlurView>
   );
@@ -76,6 +77,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     overflow: 'hidden',
+    position: 'relative',
+  },
+  cardInnerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(245, 158, 11, 0.02)', // Very subtle amber tint
   },
   sectionHeader: {
     flexDirection: 'row',

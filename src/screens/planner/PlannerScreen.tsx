@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { Ionicons } from '@expo/vector-icons';
 import { usePlanStore } from '../../store/planStore';
 import { useUserStore } from '../../store/userStore';
 import { useWasteStore } from '../../store/wasteStore';
@@ -23,8 +24,24 @@ type PlannerTab = 'weekly' | 'daily' | 'waste' | 'shopping';
 const DAYS: DayKey[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const DAY_LABELS: Record<DayKey, string> = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun' };
 const MEALS: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
-const MEAL_ICONS: Record<MealType, string> = { breakfast: '🌅', lunch: '☀️', dinner: '🌙', snack: '🍎' };
 const STATUS_COLOR: Record<MealStatus, string> = { logged: Colors.mealLogged, upcoming: Colors.mealUpcoming, skipped: Colors.mealSkipped };
+
+// Colored badges for meals
+const MEAL_BADGE: Record<MealType, { letter: string; color: string }> = {
+  breakfast: { letter: 'B', color: '#F59E0B' },
+  lunch:     { letter: 'L', color: '#22C55E' },
+  dinner:    { letter: 'D', color: '#6366F1' },
+  snack:     { letter: 'S', color: '#EC4899' },
+};
+
+const MealBadge: React.FC<{ meal: MealType; size?: number }> = ({ meal, size = 44 }) => {
+  const { letter, color } = MEAL_BADGE[meal];
+  return (
+    <View style={[styles.mealBadge, { width: size, height: size, borderRadius: size / 2, backgroundColor: color + '22' }]}>
+      <Text style={[styles.mealBadgeLetter, { fontSize: size * 0.45, color }]}>{letter}</Text>
+    </View>
+  );
+};
 
 export const PlannerScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<PlannerTab>('daily');
@@ -44,11 +61,11 @@ export const PlannerScreen: React.FC = () => {
         const mergedDays = { ...weeklyPlan.days };
         mergedDays[selectedDay] = singleDayPlan;
         await setPlan({ ...weeklyPlan, days: mergedDays });
-        Alert.alert('✅ Plan Updated!', `Meals for ${DAY_LABELS[selectedDay]} have been regenerated.`);
+        Alert.alert('Plan Updated!', `Meals for ${DAY_LABELS[selectedDay]} have been regenerated.`);
       } else {
         const plan = await generateDietPlan(profile);
         await setPlan(plan);
-        Alert.alert('✅ Plan Generated!', 'Your personalized 7-day diet plan is ready!');
+        Alert.alert('Plan Generated!', 'Your personalized 7-day diet plan is ready!');
       }
     } catch {
       const mock = MOCK_DIET_PLAN(profile.id);
@@ -58,50 +75,48 @@ export const PlannerScreen: React.FC = () => {
     }
   };
 
-  const tabs: { key: PlannerTab; label: string; emoji: string }[] = [
-    { key: 'daily', label: 'Daily', emoji: '📋' },
-    { key: 'waste', label: 'Waste', emoji: '♻️' },
-    { key: 'shopping', label: 'Shop', emoji: '🛒' },
+  const tabs: { key: PlannerTab; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+    { key: 'daily', label: 'Daily', icon: 'calendar-outline' },
+    { key: 'waste', label: 'Waste', icon: 'leaf-outline' },
+    { key: 'shopping', label: 'Shop', icon: 'cart-outline' },
   ];
 
   const todayPlan = weeklyPlan?.days[selectedDay];
   const consumedCals = todayPlan ? MEALS.filter(m => todayPlan[m].status === 'logged').reduce((s, m) => s + todayPlan[m].macros.calories, 0) : 0;
 
   const SHOPPING_ITEMS = [
-    { category: '🥬 Produce', items: ['Spinach — 200g', 'Tomatoes — 4 pcs', 'Onions — 3 pcs', 'Garlic — 1 bulb'] },
-    { category: '🥛 Dairy', items: ['Paneer — 250g', 'Curd — 500ml', 'Greek Yogurt — 200g'] },
-    { category: '🌾 Grains', items: ['Brown Rice — 1kg', 'Oats — 500g', 'Whole Wheat Flour — 1kg'] },
-    { category: '🫘 Protein', items: ['Toor Dal — 500g', 'Moong Dal — 500g', 'Rajma — 500g'] },
+    { category: 'Produce', items: ['Spinach — 200g', 'Tomatoes — 4 pcs', 'Onions — 3 pcs', 'Garlic — 1 bulb'] },
+    { category: 'Dairy', items: ['Paneer — 250g', 'Curd — 500ml', 'Greek Yogurt — 200g'] },
+    { category: 'Grains', items: ['Brown Rice — 1kg', 'Oats — 500g', 'Whole Wheat Flour — 1kg'] },
+    { category: 'Protein', items: ['Toor Dal — 500g', 'Moong Dal — 500g', 'Rajma — 500g'] },
   ];
 
   return (
     <>
       <StatusBar barStyle="light-content" />
       <SafeAreaView style={styles.safe}>
-        <LinearGradient colors={Colors.gradientPrimary} style={styles.header}>
-          <Text style={styles.title}>📅 Diet Planner</Text>
+        <View style={[styles.header, { backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.divider }]}>
+          <Text style={styles.title}>Diet Planner</Text>
           <Text style={styles.subtitle}>Your personalized weekly meal plan</Text>
           <View style={styles.tabRow}>
             {tabs.map(t => (
               <TouchableOpacity key={t.key} style={[styles.tab, activeTab === t.key && styles.tabActive]} onPress={() => setActiveTab(t.key)}>
-                <Text style={styles.tabEmoji}>{t.emoji}</Text>
+                <Ionicons name={t.icon} size={18} color={activeTab === t.key ? Colors.primary : 'rgba(255,255,255,0.7)'} />
                 <Text style={[styles.tabText, activeTab === t.key && styles.tabTextActive]}>{t.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
-        </LinearGradient>
+        </View>
 
         <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
           {!weeklyPlan && (
             <Card style={styles.generateCard}>
-              <Text style={styles.generateEmoji}>🤖</Text>
+              <Ionicons name="sparkles" size={48} color={Colors.primary} />
               <Text style={styles.generateTitle}>No Plan Yet</Text>
               <Text style={styles.generateSubtitle}>Let AI generate a personalized 7-day plan based on your health profile</Text>
-              <Button label="✨ Generate My Plan" onPress={generatePlan} loading={isGenerating} size="lg" fullWidth />
+              <Button label="Generate My Plan" onPress={generatePlan} loading={isGenerating} size="lg" fullWidth />
             </Card>
           )}
-
-
 
           {/* DAILY VIEW */}
           {activeTab === 'daily' && (
@@ -115,7 +130,7 @@ export const PlannerScreen: React.FC = () => {
               </ScrollView>
 
               {weeklyPlan && (
-                <Button label={`🔄 Regenerate ${DAY_LABELS[selectedDay]}`} onPress={generatePlan} loading={isGenerating} variant="secondary" size="md" fullWidth />
+                <Button label={`Regenerate ${DAY_LABELS[selectedDay]}`} onPress={generatePlan} loading={isGenerating} variant="secondary" size="md" fullWidth />
               )}
 
               {todayPlan ? (
@@ -132,7 +147,7 @@ export const PlannerScreen: React.FC = () => {
                     return (
                       <Card key={meal} style={styles.mealCard}>
                         <View style={styles.mealHeader}>
-                          <Text style={styles.mealEmoji}>{MEAL_ICONS[meal]}</Text>
+                          <MealBadge meal={meal} />
                           <View style={{ flex: 1 }}>
                             <Text style={styles.mealType}>{meal.toUpperCase()}</Text>
                             <Text style={styles.mealName}>{slot.name}</Text>
@@ -140,14 +155,19 @@ export const PlannerScreen: React.FC = () => {
                           </View>
                           <View style={[styles.statusDot, { backgroundColor: STATUS_COLOR[slot.status] }]} />
                         </View>
-                        {slot.wasteReduction && <Text style={styles.wasteTag}>♻️ Uses pantry items</Text>}
+                        {slot.wasteReduction && (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                            <Ionicons name="leaf" size={12} color={Colors.warning} />
+                            <Text style={styles.wasteTag}>Uses pantry items</Text>
+                          </View>
+                        )}
                         <View style={styles.mealActions}>
                           <TouchableOpacity style={styles.actionBtn} onPress={() => updateMealStatus(selectedDay, meal, slot.status === 'logged' ? 'upcoming' : 'logged')}>
-                            <Text style={styles.actionBtnText}>{slot.status === 'logged' ? '✓ Logged' : '✅ Log'}</Text>
+                            <Text style={styles.actionBtnText}>{slot.status === 'logged' ? 'Logged' : 'Log Meal'}</Text>
                           </TouchableOpacity>
 
                           <TouchableOpacity style={styles.actionBtn} onPress={() => Alert.alert(slot.name, slot.recipeSteps?.join('\n\n') ?? 'No recipe available')}>
-                            <Text style={styles.actionBtnText}>📖 Recipe</Text>
+                            <Text style={styles.actionBtnText}>Recipe</Text>
                           </TouchableOpacity>
                         </View>
                       </Card>
@@ -164,12 +184,12 @@ export const PlannerScreen: React.FC = () => {
           {activeTab === 'waste' && (
             <View style={{ gap: Spacing[3] }}>
               <Card style={[styles.wasteCard, { backgroundColor: Colors.successLight }]}>
-                <Text style={styles.wasteTitle}>♻️ WASTE SAVED THIS WEEK</Text>
+                <Text style={styles.wasteTitle}>WASTE SAVED THIS WEEK</Text>
                 <View style={styles.wasteGrid}>
-                  <WasteStat emoji="🍽️" label="Meals from pantry" value={`${tracker?.mealsFromPantry ?? 4} meals`} />
-                  <WasteStat emoji="⚖️" label="Food saved" value={`${tracker?.weightSavedGrams ?? 600}g`} />
-                  <WasteStat emoji="💰" label="Money saved" value={formatINR(tracker?.moneySavedINR ?? 320)} />
-                  <WasteStat emoji="🌍" label="CO₂ avoided" value={`${(tracker?.co2AvoidedKg ?? 0.8).toFixed(1)}kg`} />
+                  <WasteStat icon="restaurant-outline" label="Meals from pantry" value={`${tracker?.mealsFromPantry ?? 0} meals`} />
+                  <WasteStat icon="scale-outline" label="Food saved" value={`${tracker?.weightSavedGrams ?? 0}g`} />
+                  <WasteStat icon="wallet-outline" label="Money saved" value={formatINR(tracker?.moneySavedINR ?? 0)} />
+                  <WasteStat icon="globe-outline" label="CO₂ avoided" value={`${(tracker?.co2AvoidedKg ?? 0).toFixed(1)}kg`} />
                 </View>
               </Card>
 
@@ -177,9 +197,15 @@ export const PlannerScreen: React.FC = () => {
                 <Text style={styles.wasteTitle}>USE WHAT YOU HAVE</Text>
                 <Text style={styles.wasteSubtitle}>Scan your fridge to map pantry items to this week's plan</Text>
                 <View style={styles.pantryGrid}>
-                  {['✅ Palak Paneer — ready now', '✅ Dal Tadka — ready now', '🔄 Rajma needs rajma from store', '❌ Biryani needs full shop'].map((item, i) => (
+                  {[
+                    { text: 'Palak Paneer — ready now', icon: 'checkmark-circle', color: Colors.success },
+                    { text: 'Dal Tadka — ready now', icon: 'checkmark-circle', color: Colors.success },
+                    { text: 'Rajma needs rajma from store', icon: 'refresh-circle', color: Colors.warning },
+                    { text: 'Biryani needs full shop', icon: 'close-circle', color: Colors.danger }
+                  ].map((item, i) => (
                     <View key={i} style={styles.pantryItem}>
-                      <Text style={styles.pantryText}>{item}</Text>
+                      <Ionicons name={item.icon as any} size={18} color={item.color} />
+                      <Text style={styles.pantryText}>{item.text}</Text>
                     </View>
                   ))}
                 </View>
@@ -191,7 +217,7 @@ export const PlannerScreen: React.FC = () => {
           {activeTab === 'shopping' && (
             <View style={{ gap: Spacing[3] }}>
               <View style={styles.shopHeader}>
-                <Text style={styles.shopTitle}>🛒 Smart Shopping List</Text>
+                <Text style={styles.shopTitle}>Smart Shopping List</Text>
                 <Text style={styles.shopBudget}>Est. Total: {formatINR(680)}</Text>
               </View>
               {SHOPPING_ITEMS.map((section, si) => (
@@ -199,13 +225,13 @@ export const PlannerScreen: React.FC = () => {
                   <Text style={styles.shopCategory}>{section.category}</Text>
                   {section.items.map((item, i) => (
                     <View key={i} style={styles.shopItem}>
-                      <Text style={styles.shopCheckbox}>☐</Text>
+                      <Ionicons name="square-outline" size={18} color={Colors.textMuted} />
                       <Text style={styles.shopItemText}>{item}</Text>
                     </View>
                   ))}
                 </Card>
               ))}
-              <Button label="📤 Share List" onPress={() => Alert.alert('Share', 'Shopping list copied to clipboard!')} variant="secondary" size="md" fullWidth />
+              <Button label="Share List" onPress={() => Alert.alert('Share', 'Shopping list copied to clipboard!')} variant="secondary" size="md" fullWidth />
             </View>
           )}
         </ScrollView>
@@ -214,9 +240,9 @@ export const PlannerScreen: React.FC = () => {
   );
 };
 
-const WasteStat: React.FC<{ emoji: string; label: string; value: string }> = ({ emoji, label, value }) => (
+const WasteStat: React.FC<{ icon: keyof typeof Ionicons.glyphMap; label: string; value: string }> = ({ icon, label, value }) => (
   <View style={styles.wasteStat}>
-    <Text style={styles.wasteStatEmoji}>{emoji}</Text>
+    <Ionicons name={icon} size={24} color={Colors.success} />
     <Text style={styles.wasteStatValue}>{value}</Text>
     <Text style={styles.wasteStatLabel}>{label}</Text>
   </View>
@@ -228,29 +254,18 @@ const styles = StyleSheet.create({
   title: { fontFamily: FontFamily.display, fontSize: FontSizes['2xl'], fontWeight: FontWeights.bold, color: '#FFFFFF' },
   subtitle: { fontFamily: FontFamily.body, fontSize: FontSizes.sm, color: 'rgba(255,255,255,0.8)', marginBottom: Spacing[4] },
   tabRow: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: Radius.xl, padding: 4, gap: 2 },
-  tab: { flex: 1, alignItems: 'center', paddingVertical: Spacing[2], borderRadius: Radius.lg },
+  tab: { flex: 1, alignItems: 'center', paddingVertical: Spacing[2], borderRadius: Radius.lg, flexDirection: 'row', justifyContent: 'center', gap: 6 },
   tabActive: { backgroundColor: Colors.surface },
-  tabEmoji: { fontSize: 16 },
   tabText: { fontFamily: FontFamily.body, fontSize: FontSizes.xs, color: 'rgba(255,255,255,0.8)', fontWeight: FontWeights.medium },
   tabTextActive: { color: Colors.primary, fontWeight: FontWeights.semibold },
-  body: { padding: Spacing[4], paddingBottom: 32, gap: Spacing[3] },
+  body: { padding: Spacing[4], paddingBottom: 120, gap: Spacing[3] },
   generateCard: { alignItems: 'center', gap: Spacing[3], padding: Spacing[6] },
-  generateEmoji: { fontSize: 56 },
   generateTitle: { fontSize: FontSizes['2xl'], fontWeight: FontWeights.bold, color: Colors.textPrimary },
   generateSubtitle: { fontSize: FontSizes.base, color: Colors.textSecondary, textAlign: 'center' },
-  weekGrid: { flexDirection: 'row', gap: Spacing[2] },
-  dayCell: { flex: 1, backgroundColor: Colors.surface, borderRadius: Radius.lg, padding: Spacing[2], alignItems: 'center', gap: 4, borderWidth: 1.5, borderColor: Colors.border },
-  dayCellSelected: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  dayCellToday: { borderColor: Colors.primary },
-  dayLabel: { fontSize: FontSizes.xs, fontWeight: FontWeights.bold, color: Colors.textSecondary },
-  dayLabelSelected: { color: '#FFFFFF' },
-  mealDots: { flexDirection: 'row', flexWrap: 'wrap', gap: 2, justifyContent: 'center' },
-  dot: { width: 5, height: 5, borderRadius: 3 },
-  dayProgress: { fontSize: 9, color: Colors.textMuted, fontWeight: FontWeights.semibold },
   daySelectorScroll: { gap: Spacing[2], paddingVertical: Spacing[1], paddingHorizontal: Spacing[1] },
-  daySelectorItem: { paddingHorizontal: Spacing[4], paddingVertical: Spacing[2], borderRadius: Radius.lg, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: Colors.border },
-  daySelectorActive: { backgroundColor: 'rgba(14, 165, 233, 0.1)', borderColor: Colors.primary, ...Shadow.primaryGlow },
-  daySelectorText: { fontFamily: FontFamily.body, fontSize: FontSizes.sm, color: Colors.textMuted, fontWeight: FontWeights.medium },
+  daySelectorItem: { paddingHorizontal: Spacing[4], paddingVertical: Spacing[2], borderRadius: Radius.lg, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  daySelectorActive: { backgroundColor: 'rgba(245, 158, 11, 0.1)', borderColor: Colors.primary, ...Shadow.primaryGlow },
+  daySelectorText: { fontFamily: FontFamily.body, fontSize: FontSizes.sm, color: 'rgba(255,255,255,0.7)', fontWeight: FontWeights.medium },
   daySelectorTextActive: { color: Colors.primary, fontWeight: FontWeights.bold },
   calorieBar: { gap: Spacing[2] },
   calorieText: { fontFamily: FontFamily.display, fontSize: FontSizes.sm, color: Colors.textSecondary, fontWeight: FontWeights.medium },
@@ -258,7 +273,8 @@ const styles = StyleSheet.create({
   calorieFill: { height: '100%', backgroundColor: Colors.primary, borderRadius: Radius.full, ...Shadow.primaryGlow },
   mealCard: { gap: Spacing[2], backgroundColor: 'rgba(24,24,27,0.6)' },
   mealHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing[3] },
-  mealEmoji: { fontSize: 32, width: 44 },
+  mealBadge: { alignItems: 'center', justifyContent: 'center' },
+  mealBadgeLetter: { fontFamily: FontFamily.display, fontWeight: FontWeights.bold },
   mealType: { fontFamily: FontFamily.body, fontSize: FontSizes.xs, fontWeight: FontWeights.semibold, color: Colors.primaryLight, letterSpacing: 1 },
   mealName: { fontFamily: FontFamily.display, fontSize: FontSizes.lg, fontWeight: FontWeights.bold, color: Colors.textPrimary, marginTop: 2 },
   mealCals: { fontFamily: FontFamily.body, fontSize: FontSizes.xs, color: Colors.textSecondary, marginTop: 4 },
@@ -273,17 +289,15 @@ const styles = StyleSheet.create({
   wasteSubtitle: { fontSize: FontSizes.sm, color: Colors.textMuted, marginBottom: Spacing[2] },
   wasteGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[3] },
   wasteStat: { width: '47%', backgroundColor: Colors.surface, borderRadius: Radius.lg, padding: Spacing[3], alignItems: 'center', gap: 2 },
-  wasteStatEmoji: { fontSize: 24 },
   wasteStatValue: { fontSize: FontSizes.lg, fontWeight: FontWeights.bold, color: Colors.success },
   wasteStatLabel: { fontSize: FontSizes.xs, color: Colors.textMuted, textAlign: 'center' },
   pantryGrid: { gap: Spacing[2], marginTop: Spacing[2] },
-  pantryItem: { backgroundColor: Colors.background, borderRadius: Radius.lg, padding: Spacing[3] },
+  pantryItem: { backgroundColor: Colors.background, borderRadius: Radius.lg, padding: Spacing[3], flexDirection: 'row', alignItems: 'center', gap: Spacing[2] },
   pantryText: { fontSize: FontSizes.sm, color: Colors.textSecondary },
   shopHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   shopTitle: { fontSize: FontSizes.lg, fontWeight: FontWeights.bold, color: Colors.textPrimary },
   shopBudget: { fontSize: FontSizes.base, fontWeight: FontWeights.bold, color: Colors.primary },
   shopCategory: { fontSize: FontSizes.base, fontWeight: FontWeights.bold, color: Colors.textPrimary, marginBottom: Spacing[2] },
   shopItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3], paddingVertical: Spacing[2] },
-  shopCheckbox: { fontSize: 18, color: Colors.textMuted },
   shopItemText: { fontSize: FontSizes.base, color: Colors.textSecondary },
 });

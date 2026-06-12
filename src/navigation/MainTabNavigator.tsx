@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import { MainTabParamList } from './types';
 import { Colors } from '../theme/colors';
 import { FontSizes, FontWeights } from '../theme/typography';
@@ -15,11 +16,11 @@ import { ProfileScreen } from '../screens/profile/ProfileScreen';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-const TabIcon: React.FC<{ emoji: string; label: string; focused: boolean }> = ({
-  emoji, label, focused,
+const TabIcon: React.FC<{ icon: any; label: string; focused: boolean }> = ({
+  icon, label, focused,
 }) => (
   <View style={[styles.tabItem, focused && styles.tabItemActive]}>
-    <Text style={[styles.tabEmoji, focused && styles.tabEmojiActive]}>{emoji}</Text>
+    <Ionicons name={icon} size={22} color={focused ? Colors.tabActive : Colors.tabInactive} />
     <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>{label}</Text>
   </View>
 );
@@ -36,35 +37,35 @@ export const MainTabNavigator = () => (
       name="Home"
       component={HomeScreen}
       options={{
-        tabBarIcon: ({ focused }) => <TabIcon emoji="🏠" label="Home" focused={focused} />,
+        tabBarIcon: ({ focused }) => <TabIcon icon={focused ? "home" : "home-outline"} label="Home" focused={focused} />,
       }}
     />
     <Tab.Screen
       name="Scanner"
       component={ScannerScreen}
       options={{
-        tabBarIcon: ({ focused }) => <TabIcon emoji="🔍" label="Scan" focused={focused} />,
+        tabBarIcon: ({ focused }) => <TabIcon icon={focused ? "scan" : "scan-outline"} label="Scan" focused={focused} />,
       }}
     />
     <Tab.Screen
       name="Chat"
       component={ChatScreen}
       options={{
-        tabBarIcon: ({ focused }) => <TabIcon emoji="🤖" label="AI Chat" focused={focused} />,
+        tabBarIcon: ({ focused }) => <TabIcon icon={focused ? "chatbubble" : "chatbubble-outline"} label="AI Chat" focused={focused} />,
       }}
     />
     <Tab.Screen
       name="Planner"
       component={PlannerScreen}
       options={{
-        tabBarIcon: ({ focused }) => <TabIcon emoji="📅" label="Plan" focused={focused} />,
+        tabBarIcon: ({ focused }) => <TabIcon icon={focused ? "calendar" : "calendar-outline"} label="Plan" focused={focused} />,
       }}
     />
     <Tab.Screen
       name="Profile"
       component={ProfileScreen}
       options={{
-        tabBarIcon: ({ focused }) => <TabIcon emoji="👤" label="Profile" focused={focused} />,
+        tabBarIcon: ({ focused }) => <TabIcon icon={focused ? "person" : "person-outline"} label="Profile" focused={focused} />,
       }}
     />
   </Tab.Navigator>
@@ -72,40 +73,39 @@ export const MainTabNavigator = () => (
 
 const styles = StyleSheet.create({
   tabBar: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    right: 16,
+    borderRadius: Radius['2xl'],
     backgroundColor: Colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: Colors.divider,
-    height: Platform.OS === 'ios' ? 84 : 68,
-    paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+    borderTopWidth: 0,
+    height: Platform.OS === 'ios' ? 76 : 68,
+    paddingBottom: Platform.OS === 'ios' ? 12 : 8,
     paddingTop: 8,
+    paddingHorizontal: 8,
     ...Shadow.md,
+    elevation: 8,
   },
   tabItem: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: Radius.lg,
     minWidth: 56,
   },
   tabItemActive: {
     backgroundColor: Colors.primaryMuted,
   },
-  tabEmoji: {
-    fontSize: 20,
-    opacity: 0.6,
-  },
-  tabEmojiActive: {
-    opacity: 1,
-  },
   tabLabel: {
-    fontSize: FontSizes.xs,
+    fontSize: 10,
     fontWeight: FontWeights.medium,
     color: Colors.tabInactive,
-    marginTop: 2,
+    marginTop: 4,
   },
   tabLabelActive: {
     color: Colors.tabActive,
-    fontWeight: FontWeights.semibold,
+    fontWeight: FontWeights.bold,
   },
 });
